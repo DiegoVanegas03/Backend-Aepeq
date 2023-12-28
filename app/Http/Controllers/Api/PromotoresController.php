@@ -124,7 +124,7 @@ class PromotoresController extends Controller
                         'promotor_id'=>$promotor->id,
                     ]);
                 }
-                $domain = 'http://localhost:3000/registro';
+                $domain = 'https://aepeq.mx/registro';
                 $tokens = TokensRegistro::where('promotor_id', $promotor->id)->get();
                 foreach($tokens as $token){
                     $metadata ='token='.$token->token_de_registro.'&tipo_inscripcion='.$token->tipo_inscripcion;
@@ -191,7 +191,7 @@ class PromotoresController extends Controller
 
     public function getTokensRegistro(Request $request){
         $id_promotor = $request['idPromotor'];
-        $domain = 'http://localhost:3000/registro';
+        $domain = 'https://aepeq.mx/registro';
         $tokens = TokensRegistro::where('promotor_id', $id_promotor)->get();
         foreach($tokens as $token){
             $metadata ='token='.$token->token_de_registro.'&tipo_inscripcion='.$token->tipo_inscripcion;
