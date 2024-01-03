@@ -22,7 +22,6 @@ class PromotoresController extends Controller
             'getTotalInfo',
             'generateUrl',
             'getTokens',
-            'cleanTokens',
             'getPromotor',
             'getTokensRegistro'
         );
@@ -30,7 +29,6 @@ class PromotoresController extends Controller
             'getTotalInfo',
             'generateUrl',
             'getTokens',
-            'cleanTokens',
             'getPromotor',
             'getTokensRegistro'
         );
@@ -39,10 +37,6 @@ class PromotoresController extends Controller
     public function getTotalInfo(){
         $promotores = Promotor::all();
         return response()->json(['promotores' => $promotores], 200);
-    }
-
-    public function getNombres(){
-        return Promotor::all('nombre');
     }
 
     public function generateUrl(){
@@ -59,16 +53,6 @@ class PromotoresController extends Controller
     public function getTokens(){
         $tokens = TokensPromotores::all();
         return response()->json(['tokens' => $tokens], 200);
-    }
-
-    public function cleanTokens(){
-        $tokens = TokensPromotores::all();
-        foreach($tokens as $token){
-            if($token->fecha_expiracion < new DateTime()){
-                $token->delete();
-            }
-        }
-        return response()->json(['message' => 'Tokens Limpiados'], 200);
     }
 
     public function evaluateTokenAccess(Request $request){

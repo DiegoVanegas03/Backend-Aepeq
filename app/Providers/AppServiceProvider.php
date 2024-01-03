@@ -20,9 +20,6 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        VerifyEmail::createUrlUsing(function ($notifiable) {
-            $hash = sha1($notifiable->getEmailForVerification());
-            return 'https://aepeq.mx/verifyMail?id='.$notifiable->getKey().'&hash='.$hash . '&name='. $notifiable->getNameUser();
-        });
+        //
     }
 }

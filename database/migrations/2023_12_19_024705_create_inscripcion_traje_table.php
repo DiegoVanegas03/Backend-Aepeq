@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('primer_participante')->unique()->constrained('users')->cascadeOnDelete()->cascadeOnUpdate();
             $table->foreignId('segundo_participante')->unique()->constrained('users')->cascadeOnDelete()->cascadeOnUpdate();
-            $table->foreignId('estado_representante')->unique()->constrained('estado_mexico')->cascadeOnDelete()->cascadeOnUpdate();
+            $table->foreignId('estado_representante')->unique()->constrained('estados_mexico')->cascadeOnDelete()->cascadeOnUpdate();
             $table->string('nombre_doc');
             $table->string('nombre_pista');
             $table->timestamps();

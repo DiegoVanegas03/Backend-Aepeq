@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Hash;
 use App\Http\Controllers\Functions;
 use App\Events\UserLoggedOut;
 use App\Events\UpdateRegistersAdmin;
+use App\Notifications\EmailRegister;
 use DateTime;
 
 class AuthController extends Controller
@@ -193,7 +194,9 @@ class AuthController extends Controller
             // Asignar el código QR codificado en base64 al usuario
             $user->qr_code = Functions::createQr($user->id);
             $user->save();
-            //$user->sendEmailVerificationNotification();
+            $hash = sha1($user->email);
+            $url = 'https://aepeq.mx/verifyMail?id='.$user->id.'&hash='.$hash . '&name='. $user->nombres;
+            $user->notify(new EmailRegister($url));
             event(new UpdateRegistersAdmin('Nuevo registro', 'Se ha registrado un nuevo usuario'));
             return response()->json(['qrBase64' => $user->qr_code, 'msType'=>"exito" , 'message'=>"Registro guardado correctamente"], 200);
         } catch (\Exception $e) {

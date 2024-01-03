@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\TalleresController;
 use App\Http\Controllers\Api\ProgramaController;
 use App\Http\Controllers\Api\ActividadesController;
 use App\Http\Controllers\Api\AdminController;
+use App\Http\Controllers\Api\ChangePassword;
 use App\Http\Controllers\Api\MailController;
 use Illuminate\Support\Facades\Route;
 /*
@@ -27,10 +28,16 @@ Route::get('/user/partial_info', [AuthController::class, 'partial_info']);
 Route::get('/email/verify',[MailController::class,'verifiedMail']);
 Route::get('/email/user/resend',[MailController::class,'resendEmail']);
 Route::get('/user/total_info', [AuthController::class, 'total_info']);
+Route::post('/recoveryPwd/evalueteToken', [ChangePassword::class, 'evaluateTokenAccess']);
+Route::post('/user/reset_password/send_email', [ChangePassword::class, 'sendEmail']);
+Route::post('/user/reset_password/reset_password', [ChangePassword::class, 'resetPassword']);
+Route::post('/user/reset_password/verificate_password', [ChangePassword::class, 'verificatePassword']);
+Route::post('/user/reset_password/changePassword', [ChangePassword::class, 'changePassword']);
 
 //Rutas de promotores
 Route::get('/promotores/getNombres', [PromotoresController::class, 'getNombres']);
 Route::post('/promotores/registro', [PromotoresController::class, 'register']);
+Route::post('/promotores/evalueteToken', [PromotoresController::class, 'evaluateTokenAccess']);
 //Rutas de comites
 Route::get('/comites/getTotalInfo', [ComitesController::class, 'getTotalInfo']);
 
@@ -46,8 +53,6 @@ Route::get('/admin/sidebar/talleres', [AdminController::class, 'getDataSideBar']
 Route::get('/admin/getTotalInfo', [PromotoresController::class, 'getTotalInfo']);
 Route::get('/admin/generateLink', [PromotoresController::class, 'generateUrl']);
 Route::get('/admin/getTokens', [PromotoresController::class, 'getTokens']);
-Route::get('/admin/cleanTokens', [PromotoresController::class, 'cleanTokens']);
-Route::post('/admin/evaluateTokenAccess', [PromotoresController::class, 'evaluateTokenAccess']);
 Route::post('/admin/getInfoPromotor',[PromotoresController::class, 'getPromotor']);
 Route::post('/admin/getTokensRegistro',[PromotoresController::class, 'getTokensRegistro']);
 

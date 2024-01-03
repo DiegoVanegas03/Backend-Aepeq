@@ -32,11 +32,14 @@ class MailController extends Controller
 
     public function resendEmail(Request $request){
         $user = $request->user();
-        if (!$user->hasVerifiedEmail()) {
-            $user->sendEmailVerificationNotification();
+        try{
+            if (!$user->hasVerifiedEmail()) {
+                $user->sendEmailVerificationNotification();
+            }
+            $message ='Correo de confirmación enviado correctamente';
+            return response()->json(['message' => $message],200);
+        }catch(\Exception $e){
+            return response()->json(['message' => 'Error al enviar el correo', 'detail'=>$e->getTraceAsString()],500);
         }
-        $message ='Correo de confirmación enviado correctamente';
-        $expiration = 30;
-        return response()->json(['message' => $message],200);
     }
 }
