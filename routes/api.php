@@ -58,11 +58,13 @@ Route::post('/admin/getTokensRegistro',[PromotoresController::class, 'getTokensR
 
 //Rutas de talleres
 Route::get('/talleres/getInfoTalleres', [TalleresController::class, 'getInfoTalleres']);
+Route::post('/talleres/getInfoTaller', [TalleresController::class, 'getInfoTaller']);
 
 //user talleres
 Route::get('/talleres/infoDataUser', [TalleresController::class, 'getIds']);
-Route::get('talleres/registro_taller',[TalleresController::class, 'registro_taller']);
-Route::get('talleres/desinscripcion_taller',[TalleresController::class, 'desinscripcion_taller']);
+Route::get('/talleres/registro_taller',[TalleresController::class, 'registro_taller']);
+Route::get('/talleres/desinscripcion_taller',[TalleresController::class, 'desinscripcion_taller']);
+Route::post('/talleres/updateInfoTaller',[TalleresController::class, 'updateInfoTaller']);
 
 //Rutas para programa
 Route::get('/programa/getTotalInfo',[ProgramaController::class, 'getPonencias']);

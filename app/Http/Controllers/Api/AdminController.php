@@ -9,6 +9,8 @@ use App\Models\User;
 use App\Models\Taller;
 use App\Http\Controllers\Functions;
 use App\Events\UserLoggedOut;
+use App\Notifications\PlayAccount;
+use App\Notifications\PauseAccount;
 
 
 class AdminController extends Controller
@@ -152,6 +154,7 @@ class AdminController extends Controller
                 });
                 event(new UserLoggedOut($userId));
             }
+            $user->notify(new PauseAccount());
             return response()->json(['message' => "Registro Pausado Correctamente"], 200);
         }else{
             return response()->json(['message' => "No se encontro el usuario"], 500);    
@@ -162,6 +165,7 @@ class AdminController extends Controller
         $user = User::findOrFail($request['id']);
         $user->play();
         $user->save();
+        $user->notify(new PlayAccount());
         return response()->json(['message' => "Activado Correctamente"], 200);
     }
 
