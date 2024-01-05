@@ -62,7 +62,7 @@ class ChangePassword extends Controller
                 'expires_at' => $expiration,
             ]);
         }
-        $url = 'http://localhost:3000/recoverypwd?token='.$PersonaResetTokens->token.'&nombres='.$user->nombres;
+        $url = 'https://aepeq.mx/recoverypwd?token='.$PersonaResetTokens->token.'&nombres='.$user->nombres;
         $user->notify(new PasswordReset($url));
 
         return response()->json(['message' => 'Se ah enviado un correo electronico.']);
