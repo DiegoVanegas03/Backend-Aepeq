@@ -10,16 +10,14 @@ use Illuminate\Notifications\Notification;
 class DesinscripcionForzada extends Notification
 {
     use Queueable;
-    public $oldValue;
-    public $valor;
-    public $campo;
+    public $nombre_taller;
 
     /**
      * Create a new notification instance.
      */
-    public function __construct()
+    public function __construct($nombre_taller)
     {
-        //
+        $this->nombre_taller = $nombre_taller;
     }
 
     /**
@@ -40,11 +38,8 @@ class DesinscripcionForzada extends Notification
         return (new MailMessage)
                     ->subject('Actualizacion de taller')
                     ->greeting('Hola  '.$notifiable->nombres)
-                    ->line('Somos el equipo de AEPEQ, nos comunicamos para notificarte que un taller al cual te encuentras inscrito ah modificado la siguiente informacion.')
-                    ->line('Campo modificado: '.$this->campo)
-                    ->line('Valor anterior: '.$this->oldValue)
-                    ->line('Nuevo valor: '.$this->valor)
-                    ->line('Por lo que nos vimos con la penosa necesidad de desinscribirte del taller por algunos ajustes forzosos, te inivitamos a elegir de nuestra variedad de talleres restantes en el día.')
+                    ->line('Somos el equipo de AEPEQ, nos comunicamos para notificarte que se te tuvo que desinscribir al taller "'.$this->nombre_taller. '" debido a cambios inesperados.')
+                    ->line('Te inivitamos a elegir de nuestra variedad de talleres restantes en el día.')
                     ->line('Para mas informacion comunicate con nosotros a traves de nuestro whatsapp: +52 444 438 9723.')
                     ->action('Ir a Talleres', 'https://aepeq.mx/talleres')
                     ->line('Te esperamos, por favor no responder a este correo.');

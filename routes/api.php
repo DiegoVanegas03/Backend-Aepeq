@@ -65,6 +65,8 @@ Route::get('/talleres/infoDataUser', [TalleresController::class, 'getIds']);
 Route::get('/talleres/registro_taller',[TalleresController::class, 'registro_taller']);
 Route::get('/talleres/desinscripcion_taller',[TalleresController::class, 'desinscripcion_taller']);
 Route::post('/talleres/updateInfoTaller',[TalleresController::class, 'updateInfoTaller']);
+Route::post('/talleres/addTaller',[TalleresController::class, 'addTaller']);
+Route::post('/talleres/deleteTaller',[TalleresController::class, 'deleteTaller']);
 
 //Rutas para programa
 Route::get('/programa/getTotalInfo',[ProgramaController::class, 'getPonencias']);

@@ -19,12 +19,65 @@ class TalleresController extends Controller
             'registro_taller',
             'desinscripcion_taller',
             'getInfoTaller',
-            'updateInfoTaller'
+            'updateInfoTaller',
+            'addTaller',
+            'deleteTaller'
         );
         $this->middleware('checkRole:7')->only(
             'getInfoTaller',
-            'updateInfoTaller'
+            'updateInfoTaller',
+            'addTaller',
+            'deleteTaller'
         );
+    }
+
+    public function deleteTaller(Request $request){
+        $request->validate([
+            'id'=>'required|integer',
+        ]);
+        $id = $request['id'];
+        $taller = Taller::where('id',$id)->first();
+        $inscripciones = InscripcionTaller::where('taller_id', $taller->id)->get();
+        foreach($inscripciones as $inscripcion){
+            $user = $inscripcion->user;
+            $inscripcion->delete();
+            $user->notify(new DesinscripcionForzada($taller->nombre_taller));
+        }
+        $taller->delete();
+        event(new UpdateTalleres("Se elimino el taller ". $taller->nombre_taller));
+        return response()->json(['message' => 'Eliminación exitosa'], 200);
+    }
+
+    public function addTaller(Request $request){
+        $request->validate([
+            'nombre_taller'=>'required|string',
+            'capacidad_maxima'=>'required|integer',
+            'aula'=>'required|string',
+            'descripcion'=>'nullable|string',
+            'ponente'=>'required|string',
+            'dia'=>'required|integer',
+        ]);
+        $aula = strtoupper($request['aula']);
+        if(preg_split('/\s+/', $aula)[0]!== 'AULA'){
+            return response()->json(['error' =>'error', 'message'=> 'El aula debe de tener el formato AULA # (si el numero es de un digito agregar 0 antes:`01`)'], 500);
+        }
+
+        $aulas_existentes = Taller::where('dia',$request['dia'])->select('aula')->get();
+        foreach($aulas_existentes as $aula_existente){
+            if($aula_existente->aula === $aula){
+                return response()->json(['error' =>'error', 'message'=> 'El aula ya esta ocupada,si son cambios pequeños modifiquela si es todo eliminela y suba la actualizada.'], 500);
+            }
+        }
+        $taller = Taller::create([
+            'nombre_taller'=>$request['nombre_taller'],
+            'capacidad_maxima'=>$request['capacidad_maxima'],
+            'aula'=>$aula,
+            'descripcion'=>$request['descripcion'],
+            'ponente'=>$request['ponente'],
+            'dia'=>$request['dia'],
+        ]);
+        event(new UpdateTalleres("Se añadio el taller de aula ". $taller->aula));
+        return response()->json(['message' => 'Registro exitoso'], 200);
     }
 
     public function updateInfoTaller(Request $request){
@@ -55,8 +108,8 @@ class TalleresController extends Controller
                 $inscripcionesExcedentes = $inscripciones->slice($valor);
                 foreach($inscripcionesExcedentes as $inscripcion){
                     $user = $inscripcion->user;
+                    $user->notify(new DesinscripcionForzada($taller->nombre_taller));
                     $inscripcion->delete();
-                    $user->notify(new DesinscripcionForzada($oldValue,$valor, $labels[$campo]));
                 }
             }
         }else{
@@ -73,11 +126,14 @@ class TalleresController extends Controller
 
     public function getInfoTaller(Request $request){
         $dia = $request['dia'];
+        $totalInscritos = InscripcionTaller::all()->count();
         $talleres = Taller::where('dia', $dia)->get();
+        $count = 0;
         foreach($talleres as $taller){
             $taller->inscritos = InscripcionTaller::where('taller_id',$taller->id)->count();
+            $count += $taller->inscritos;
         }
-        return response()->json(['talleres'=>$talleres], 200);
+        return response()->json(['talleres'=>$talleres,'inscritos'=>$count, 'total'=>$totalInscritos], 200);
     }
 
     public function getInfoTalleres(){
@@ -122,15 +178,13 @@ class TalleresController extends Controller
         $id = $request['id'];
         $taller = Taller::where('id',$id)->first();
         $inscritos_count = InscripcionTaller::where('taller_id',$id)->count();
-        $inscrito = InscripcionTaller::where('user_id', $user->id)->first();
-
-        if($inscrito){
-            $taller_inscrito = $inscrito->taller;
-            if($taller_inscrito->dia === $taller->dia){
+        $inscrito = InscripcionTaller::where('user_id', $user->id)->get();
+        foreach($inscrito as $inscrito){
+            if($inscrito->taller->dia === $taller->dia){
                 $details = [
-                    'id_inscrito'=>$taller_inscrito->id,
+                    'id_inscrito'=>$inscrito->taller->id,
                     'id_nuevo'=>$taller->id,
-                    'nombre_taller'=>$taller_inscrito->nombre_taller,
+                    'nombre_taller'=>$inscrito->taller->nombre_taller,
                 ];
                 return response()->json([
                     'error' =>'error',
@@ -139,7 +193,6 @@ class TalleresController extends Controller
                 ], 500);    
             }
         }
-
         try{
             if($inscritos_count >= $taller->capacidad_maxima){
                 throw new \Exception('El taller ha alcanzado su capacidad máxima.');
