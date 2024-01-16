@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\DB;
 use App\Notifications\ActualizacionTaller;
 use App\Notifications\DesinscripcionForzada;
 use App\Events\UpdateTalleres;
+use App\Notifications\CambioDeAula;
 
 class TalleresController extends Controller
 {
@@ -21,14 +22,43 @@ class TalleresController extends Controller
             'getInfoTaller',
             'updateInfoTaller',
             'addTaller',
-            'deleteTaller'
+            'deleteTaller',
+            'changeAula',
         );
         $this->middleware('checkRole:7')->only(
             'getInfoTaller',
             'updateInfoTaller',
             'addTaller',
-            'deleteTaller'
+            'deleteTaller',
+            'changeAula',
         );
+    }
+
+    public function changeAula(Request $request){
+        $request->validate([
+            'idAula1'=>'required|string',
+            'idAula2'=>'required|string',
+        ]);
+        $id_aula1 = $request['idAula1'];
+        $id_aula2 = $request['idAula2'];
+        $taller_1 = Taller::find($id_aula1);
+        $taller_2 = Taller::find($id_aula2);
+        $pivot = $taller_1->aula;
+        $taller_1->aula = $taller_2->aula;
+        $taller_2->aula = $pivot;
+        $taller_1->save();
+        $taller_2->save();
+        $inscripciones = InscripcionTaller::where('taller_id', $taller_1->id)->get();
+        foreach($inscripciones as $inscripcion){
+            $user = $inscripcion->user;
+            $user->notify(new CambioDeAula($taller_1->aula,$taller_1->nombre_taller));
+        }
+        $inscripciones = InscripcionTaller::where('taller_id', $taller_2->id)->get();
+        foreach($inscripciones as $inscripcion){
+            $user = $inscripcion->user;
+            $user->notify(new CambioDeAula($taller_2->aula,$taller_2->nombre_taller));
+        }
+        return response()->json(['message' => 'Actualización exitosa'], 200);
     }
 
     public function deleteTaller(Request $request){
@@ -127,7 +157,7 @@ class TalleresController extends Controller
     public function getInfoTaller(Request $request){
         $dia = $request['dia'];
         $totalInscritos = InscripcionTaller::all()->count();
-        $talleres = Taller::where('dia', $dia)->get();
+        $talleres = Taller::where('dia', $dia)->orderByRaw('LENGTH(aula), aula')->get();
         $count = 0;
         foreach($talleres as $taller){
             $taller->inscritos = InscripcionTaller::where('taller_id',$taller->id)->count();
@@ -143,9 +173,9 @@ class TalleresController extends Controller
             $inscritos[$taller->id] = InscripcionTaller::where('taller_id',$taller->id)->count();
         }
         
-        $T13 = Taller::where('dia', 13)->get();
-        $T14 = Taller::where('dia', 14)->get();
-        $T15 = Taller::where('dia', 15)->get();
+        $T13 = Taller::where('dia', 13)->orderByRaw('LENGTH(aula), aula')->get();
+        $T14 = Taller::where('dia', 14)->orderByRaw('LENGTH(aula), aula')->get();
+        $T15 = Taller::where('dia', 15)->orderByRaw('LENGTH(aula), aula')->get();
 
         $talleres = ['Dia13'=>$T13,'Dia14'=> $T14, 'Dia15'=>$T15];
         

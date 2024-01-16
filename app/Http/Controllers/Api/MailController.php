@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\User;
+use App\Notifications\EmailRegister;
 use DateTime;
 
 class MailController extends Controller
@@ -34,7 +35,9 @@ class MailController extends Controller
         $user = $request->user();
         try{
             if (!$user->hasVerifiedEmail()) {
-                $user->sendEmailVerificationNotification();
+                $hash = sha1($user->email);
+                $url = 'https://aepeq.mx/verifyMail?id='.$user->id.'&hash='.$hash . '&name='. $user->nombres;
+                $user->notify(new EmailRegister($url));
             }
             $message ='Correo de confirmación enviado correctamente';
             return response()->json(['message' => $message],200);

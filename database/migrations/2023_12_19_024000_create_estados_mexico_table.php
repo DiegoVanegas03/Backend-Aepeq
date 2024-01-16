@@ -14,6 +14,7 @@ return new class extends Migration
         Schema::create('estados_mexico', function (Blueprint $table) {
             $table->id();
             $table->string('estado');
+            $table->timestamp('usado')->nullable();
         });
     }
 

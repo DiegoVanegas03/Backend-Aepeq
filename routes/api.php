@@ -38,6 +38,8 @@ Route::post('/user/reset_password/changePassword', [ChangePassword::class, 'chan
 Route::get('/promotores/getNombres', [PromotoresController::class, 'getNombres']);
 Route::post('/promotores/registro', [PromotoresController::class, 'register']);
 Route::post('/promotores/evalueteToken', [PromotoresController::class, 'evaluateTokenAccess']);
+Route::post('/promotores/getInscritos', [PromotoresController::class, 'getInscritos']);
+
 //Rutas de comites
 Route::get('/comites/getTotalInfo', [ComitesController::class, 'getTotalInfo']);
 
@@ -67,6 +69,7 @@ Route::get('/talleres/desinscripcion_taller',[TalleresController::class, 'desins
 Route::post('/talleres/updateInfoTaller',[TalleresController::class, 'updateInfoTaller']);
 Route::post('/talleres/addTaller',[TalleresController::class, 'addTaller']);
 Route::post('/talleres/deleteTaller',[TalleresController::class, 'deleteTaller']);
+Route::post('/talleres/changeAula',[TalleresController::class, 'changeAula']);
 
 //Rutas para programa
 Route::get('/programa/getTotalInfo',[ProgramaController::class, 'getPonencias']);
@@ -77,3 +80,9 @@ Route::post('/actividades/registro_resumenes', [ActividadesController::class, 'r
 Route::get('/actividades/infoResumenes',[ActividadesController::class,'getInfoResumen']);
 Route::post('/actividades/registro_fotografia',[ActividadesController::class,'registerFotografia']);
 Route::get('/actividades/infoFotografia', [ActividadesController::class,'getInfoFotografia']);
+Route::get('/actividades/getEstados', [ActividadesController::class,'getEstados']);
+Route::post('/actividades/registro_traje_tipico',[ActividadesController::class,'registerTrajeTipico']);
+Route::post('/actividades/traje_tipico/aceptarRegistro',[ActividadesController::class,'aceptarPeticion']);
+Route::get('/actividades/infoTrajeTipico', [ActividadesController::class,'getInfoTrajeTipico']);
+Route::get('/actividades/traje_tipico/cancelarRegistro',[ActividadesController::class,'cancelarTrajeTipico']);
+Route::get('/actividades/traje_tipico/reenviarInvitacion',[ActividadesController::class,'ReenviarTrajeTipico']);

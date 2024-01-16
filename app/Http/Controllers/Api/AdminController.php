@@ -11,6 +11,7 @@ use App\Http\Controllers\Functions;
 use App\Events\UserLoggedOut;
 use App\Notifications\PlayAccount;
 use App\Notifications\PauseAccount;
+use App\Notifications\EmailRegister;
 
 
 class AdminController extends Controller
@@ -48,7 +49,9 @@ class AdminController extends Controller
         if($user->email_verified_at != null){
             return response()->json(['message' => "Ya confirmo su correo"], 500);
         }else{
-            $user->sendEmailVerificationNotification();
+            $hash = sha1($user->email);
+            $url = 'https://aepeq.mx/verifyMail?id='.$user->id.'&hash='.$hash . '&name='. $user->nombres;
+            $user->notify(new EmailRegister($url));
             return response()->json(['message' => "Correo enviado correctamente"], 200);
         }
     }

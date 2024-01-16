@@ -11,8 +11,10 @@ use App\Models\TokensPromotores;
 use App\Http\Controllers\Functions;
 use App\Models\FacturaPromotor;
 use App\Models\TokensRegistro;
+use App\Models\User;
 use Barryvdh\DomPDF\Facade\Pdf;
 use App\Notifications\SendTicketRegistroPromotor;
+use Laravel\Sanctum\PersonalAccessToken;
 use DateTime;
 
 class PromotoresController extends Controller
@@ -23,15 +25,34 @@ class PromotoresController extends Controller
             'generateUrl',
             'getTokens',
             'getPromotor',
-            'getTokensRegistro'
+            'getTokensRegistro',
+            'getInscritos'
         );
         $this->middleware('checkRole:7')->only(
             'getTotalInfo',
             'generateUrl',
             'getTokens',
             'getPromotor',
-            'getTokensRegistro'
+            'getTokensRegistro',
+            'getInscritos'
         );
+    }
+
+    public function getInscritos(Request $request){
+        $request->validate([
+            'idPromotor' => 'required',
+        ]);
+        $idPromotor = $request['idPromotor'];
+        $promotor = Promotor::find($idPromotor);
+        $inscritosTotales = User::where('promotor', $promotor->nombre)->get();
+        $inscritos=[];
+        foreach($inscritosTotales as $inscrito){
+            $temp['id'] = $inscrito->id;
+            $temp['nombre'] = $inscrito->nombres . ' ' . $inscrito->apellidos;
+            $temp['tp_inscripcion'] = $inscrito->tipo_inscripcion;
+            array_push($inscritos, $temp);
+        }
+        return response()->json(['inscritos' => $inscritos], 200);
     }
 
     public function getTotalInfo(){
@@ -51,7 +72,21 @@ class PromotoresController extends Controller
     }
     
     public function getTokens(){
+        $authTokens = PersonalAccessToken::all(); 
+        
+        foreach ($authTokens as $authToken) {
+            if ($authToken->expires_at < new DateTime() ) {
+                $authToken->delete();
+            }
+        }
         $tokens = TokensPromotores::all();
+        foreach ($tokens as $token) {
+            if ($token->fecha_expiracion < new DateTime() ) {
+                $token->delete();
+            }
+        }
+        $tokens = [];
+        $tokens = TokensPromotores::select('token', 'fecha_expiracion')->get();
         return response()->json(['tokens' => $tokens], 200);
     }
 
@@ -61,6 +96,7 @@ class PromotoresController extends Controller
             if($token->fecha_expiracion > new DateTime()){
                 return response()->json(['message' => 'Token Valido'], 200);
             }else{
+                $token->delete();
                 return response()->json(['error' => 'Token Expirado'], 500);
             }
         }else{
