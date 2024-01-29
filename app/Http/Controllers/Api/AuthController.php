@@ -40,8 +40,10 @@ class AuthController extends Controller
                     $user['CFDI'] = $factura->cfdi;
                     $links['CFDI'] = Functions::searchLinksS3('facturas/usuarios/CFDI/'.$factura->cfdi);
                     if($factura->factura_realizada === 'Si'){
+                        $user['Factura'] = $factura->factura;
+                        $links['Factura'] = Functions::searchLinksS3('facturas/usuarios/factura/'.$factura->factura);
+                    }else{
                         $user['Factura'] = $factura->factura_realizada;
-                        $links['Factura'] = Functions::searchLinksS3('facturas/usuarios/Factura/'.$factura->factura);
                     }
                 }
             }

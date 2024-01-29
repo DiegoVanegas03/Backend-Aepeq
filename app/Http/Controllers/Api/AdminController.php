@@ -39,9 +39,10 @@ class AdminController extends Controller
     }
 
     public function getDataSideBar(){
-        $t14 = Taller::where('dia', 14)->select('id','aula','dia')->get();
-        $t15 = Taller::where('dia', 15)->select('id','aula','dia')->get();
-        return response()->json(['Dia14'=> $t14, 'Dia15'=>$t15], 200);
+        $t13 = Taller::where('dia', 13)->select('id','aula','dia')->orderByRaw('LENGTH(aula), aula')->get();
+        $t14 = Taller::where('dia', 14)->select('id','aula','dia')->orderByRaw('LENGTH(aula), aula')->get();
+        $t15 = Taller::where('dia', 15)->select('id','aula','dia')->orderByRaw('LENGTH(aula), aula')->get();
+        return response()->json(['Dia13'=>$t13,'Dia14'=> $t14, 'Dia15'=>$t15], 200);
     }
 
     public function resend_mail_confirmation(Request $request){

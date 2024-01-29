@@ -1,7 +1,6 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Api\PromotoresController;
 
 /*
 |--------------------------------------------------------------------------
@@ -17,4 +16,3 @@ use App\Http\Controllers\Api\PromotoresController;
 Route::get('/', function () {
     return view('welcome');
 });
-

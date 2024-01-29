@@ -18,6 +18,17 @@ class Functions{
         }
     }
 
+    public static function getFile($path){
+        try{
+            /** @var Storage $s3 */
+            $s3 = Storage::disk('s3');
+            $file = $s3->get($path);
+            return $file;
+        }catch(S3Exception $e){
+            throw $e;
+        }
+    }
+
     public static function upS3Services($file, $carpeta, $nombre){
         try{
             $extension = $file->getClientOriginalExtension();

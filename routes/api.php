@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\ActividadesController;
 use App\Http\Controllers\Api\AdminController;
 use App\Http\Controllers\Api\ChangePassword;
 use App\Http\Controllers\Api\MailController;
+use App\Http\Controllers\Api\FacturasController;
 use Illuminate\Support\Facades\Route;
 /*
 |--------------------------------------------------------------------------
@@ -42,6 +43,7 @@ Route::post('/promotores/getInscritos', [PromotoresController::class, 'getInscri
 
 //Rutas de comites
 Route::get('/comites/getTotalInfo', [ComitesController::class, 'getTotalInfo']);
+Route::post('/comite/updatePrograma', [ComitesController::class, 'updateComites']);
 
 //administrador
 Route::get("/verify_admin", [AdminController::class, "verify_admin"]);
@@ -73,6 +75,7 @@ Route::post('/talleres/changeAula',[TalleresController::class, 'changeAula']);
 
 //Rutas para programa
 Route::get('/programa/getTotalInfo',[ProgramaController::class, 'getPonencias']);
+Route::post('/programa/updatePrograma',[ProgramaController::class, 'updatePonencias']);
 
 //Rutas Usuario Actividades
 Route::get('/actividades/infoRegistros',[ActividadesController::class, 'getActiveSections']);
@@ -86,3 +89,13 @@ Route::post('/actividades/traje_tipico/aceptarRegistro',[ActividadesController::
 Route::get('/actividades/infoTrajeTipico', [ActividadesController::class,'getInfoTrajeTipico']);
 Route::get('/actividades/traje_tipico/cancelarRegistro',[ActividadesController::class,'cancelarTrajeTipico']);
 Route::get('/actividades/traje_tipico/reenviarInvitacion',[ActividadesController::class,'ReenviarTrajeTipico']);
+Route::get('/actividades/getResumenes',[ActividadesController::class,'getResumenes']);
+Route::post('/actividades/aceptarResumen',[ActividadesController::class,'aceptacionResumen']);
+Route::post('/actividades/uploadExtensioFile',[ActividadesController::class,'uploadExtensioFile']);
+Route::post('/actividades/pedir_correciones',[ActividadesController::class,'pedir_correciones']);
+Route::post('/actividades/solicitar_extension',[ActividadesController::class,'solicitar_extension']);
+
+//Rutas de facturas
+Route::get('/facturas/getAll', [FacturasController::class, 'getAll']);
+Route::post('/facturas/realizar', [FacturasController::class, 'realizarFactura']);
+

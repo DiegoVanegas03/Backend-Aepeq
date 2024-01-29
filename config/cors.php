@@ -19,9 +19,9 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => ['http://localhost:3000'],
+    //'allowed_origins' => ['http://localhost:3000'],
 
-    //'allowed_origins' => ['*'],
+    'allowed_origins' => ['https://aepeq.mx','https://www.aepeq.mx'],
 
     'allowed_origins_patterns' => [],
 

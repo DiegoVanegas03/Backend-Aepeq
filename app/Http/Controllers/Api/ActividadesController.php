@@ -14,9 +14,13 @@ use App\Http\Requests\FotografiaRequest;
 use App\Models\EstadosMexico;
 use App\Models\User;
 use App\Notifications\ActividadTrajeTipico;
-use App\Models\Notifications;
 use DateTime;
 use App\Notifications\TrajeTipicoEliminado;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Database\Eloquent\Casts\Json;
+use App\Notifications\CartaDeAceptacion;
+use App\Notifications\CorreccionesResumen;
+use Illuminate\Http\UploadedFile;
 
 class ActividadesController extends Controller
 {
@@ -31,9 +35,13 @@ class ActividadesController extends Controller
             'registerTrajeTipico',
             'cancelarTrajeTipico',
             'ReenviarTrajeTipico',
-            'getInfoTrajeTipico'
+            'getInfoTrajeTipico',
+            'aceptacionResumen',
+            'getResuemenes',
+            'pedir_correciones',
+            'solicitar_extension'
         );
-        //$this->middleware('checkRole:7')->only('getTotalInfo');
+        $this->middleware('checkRole:7')->only('aceptacionResumen','getResuemenes', 'pedir_correciones','solicitar_extension');
     }
 
     public function getInfoTrajeTipico(Request $request){
@@ -156,10 +164,6 @@ class ActividadesController extends Controller
                 
                 $segundo_participante = User::find($compañero);
                 $segundo_participante->notify(new ActividadTrajeTipico($inscripcion));
-                Notifications::create([
-                    'user_id' => $segundo_participante->id,
-                    'mensaje'=>"Se te ha invitado a participar en la actividad de traje tipico, por favor revisa tu correo electronico para confirmar tu participación.",
-                ]);
                 return response()->json(['message'=>'Se preregistro correctamente, esperando confirmación del segundo compañero'], 200);
             }catch(\Exception $e){
                 $inscripcion->delete();
@@ -308,5 +312,134 @@ class ActividadesController extends Controller
         }catch(\Exception $e){
             return response()->json(['error' => 'error', 'message' => $e->getMessage(),'details'=>$e], 500);
         }
+    }
+
+    public function getResumenes(){
+        $congresistas['no_realizadas'] = InscripcionResumenes::where('estado_de_revision',0)->select('id','nombre_archivo','nombre_investigador','apellidos_investigador','created_at')->get();
+        $congresistas['realizadas'] = InscripcionResumenes::where('estado_de_revision',1)->select('id','nombre_archivo','nombre_investigador', 'apellidos_investigador','dictamen','documento_final','comentarios','oral/escrito')->get();
+        foreach($congresistas['no_realizadas'] as $congresista){
+            $rutaCompleta ='actividades/resumenes/'. $congresista->nombre_archivo;
+            $congresista['url'] = Functions::searchLinksS3($rutaCompleta);
+            $congresista['colaboradores'] = ColaboradorResumenes::where('inscripcion_id',$congresista->id)->get();
+        }
+        foreach($congresistas['realizadas'] as $congresista){
+            $congresista['oral_escrito'] = $congresista['oral/escrito'];
+            $rutaCompleta ='actividades/resumenes/'. $congresista->nombre_archivo;
+            $congresista['url'] = Functions::searchLinksS3($rutaCompleta);
+            $congresista['url_dictamen'] = Functions::searchLinksS3('actividades/resumenes/dictamenes/'.$congresista->dictamen);
+            $congresista['url_documento_final'] = $congresista->documento_final ? Functions::searchLinksS3('actividades/resumenes/documentos_finales/'.$congresista->documento_final) : null;
+            $congresista->comentarios = $congresista->comentarios === '[]' ? null : Json::decode($congresista->comentarios);
+        }
+        return response()->json(compact('congresistas'),200);
+    }
+
+    public function pedir_correciones(Request $request){
+        $request->validate([
+            'correcciones' => 'required|string',
+            'id_inscripcion' => 'required|integer',
+        ]);
+        $inscripcion = InscripcionResumenes::find($request->id_inscripcion);
+        $correcciones = Json::decode($request->correcciones);
+        $inscripcion->user->notify(new CorreccionesResumen($correcciones, $inscripcion->id));
+        return response()->json(['message'=>'Se solicito correctamente las correcciones.'], 200);
+    }
+
+    public function uploadExtensioFile(Request $request){
+        $request->validate([
+            'id_inscripcion' => 'required|integer',
+            'id_usuario' => 'required|integer',
+            'segunda_opcion'=>'required|string',
+            'file' => 'required|File',
+        ]);
+        $id_inscripcion = $request->id_inscripcion;
+        $id_usuario = $request->id_usuario;
+        $file = $request->file('file');
+        $nombre = 'documento_final_'.$id_inscripcion;
+        $rutaCompleta ='actividades/resumenes/documentos_finales/';
+        $nombre_doc = Functions::upS3Services($file,$rutaCompleta,$nombre);
+        $inscripcion = InscripcionResumenes::where('id',$id_inscripcion)->where('user_id', $id_usuario)->first();
+        $inscripcion->documento_final = $nombre_doc;
+        if($request->segunda_opcion === 'false'){
+            $inscripcion['oral/escrito'] = $request->modalidad;
+        }
+        $inscripcion->save();
+        return response()->json(['message'=>'Se subio correctamente el documento final.'], 200);
+    }
+
+    public function solicitar_extension(Request $request){
+        $request->validate([
+            'id_inscripcion' => 'required|integer',
+        ]);
+        $id_inscripcion = $request->id_inscripcion;
+        $inscripcion = InscripcionResumenes::find($id_inscripcion);
+        $rutaCompleta ='actividades/resumenes/dictamenes/'.$inscripcion->dictamen;
+        $content = Functions::getFile($rutaCompleta);
+        $inscripcion->user->notify(new CartaDeAceptacion($content,$inscripcion->dictamen, $inscripcion->id));
+        return response()->json(['message'=>'Se solicito correctamente las correcciones.'], 200);
+    }
+
+
+
+    public function aceptacionResumen(Request $request){
+        $request->validate([
+            'id_inscripcion' => 'required|integer',
+            'titulo'=> 'required|string',
+            'observaciones' => 'required|string',
+        ]);
+        $id_inscripcion = $request->id_inscripcion;
+        $comentarios = $request->observaciones;
+
+        $inscripcion = InscripcionResumenes::find($id_inscripcion);
+        $colaboradores = ColaboradorResumenes::where('inscripcion_id',$inscripcion->id)->get();
+        $inscripcion->user;
+        $inscripcion->comentarios = $comentarios;
+        $inscripcion->estado_de_revision = 1;
+        //Formato de tiempó
+        $months = [
+            'January' => 'Enero',
+            'February' => 'Febrero',
+            'March' => 'Marzo',
+            'April' => 'Abril',
+            'May' => 'Mayo',
+            'June' => 'Junio',
+            'July' => 'Julio',
+            'August' => 'Agosto',
+            'September' => 'Septiembre',
+            'October' => 'Octubre',
+            'November' => 'Noviembre',
+            'December' => 'Diciembre',
+        ];    
+        $date = new DateTime();
+        $date = $date->format('j') . ' de ' . $months[$date->format('F')] . ' ' . $date->format('Y');
+        //Fin formato de tiempo
+        $comentarios = Json::decode($comentarios) ? Json::decode($comentarios) : null;
+        $titulo = $request->titulo;
+        $pdf = PDF::loadView('resumenes.aceptacion', compact('inscripcion', 'colaboradores','date','comentarios','titulo'));
+        $pdf->setPaper('A4'); 
+        $pdf->setOption('chroot',realpath(''));
+        $canvas = $pdf->getCanvas(); 
+        
+        $w = $canvas->get_width(); 
+        $h = $canvas->get_height(); 
+        
+        $imageURL ='FONDO.jpg';  
+        $firmaURL = 'Firma diana.png'; 
+        $canvas->image($imageURL, 0, 0, $w, $h);
+        $canvas->image($firmaURL, $w/2-190/2, $h-185, 190,80);
+ 
+        $pdf->render();
+
+        $content = $pdf->output();
+        $tempFile = tempnam(sys_get_temp_dir(), 'pdf');
+        file_put_contents($tempFile, $content);
+        $nombre = 'dictamen_'.$inscripcion->user->id;
+        $rutaCompleta ='actividades/resumenes/dictamenes/';
+        $file = new UploadedFile($tempFile, 'undefined.pdf');
+        $nombre_doc = Functions::upS3Services($file,$rutaCompleta,$nombre);
+        unlink($tempFile);
+        $inscripcion->dictamen = $nombre_doc;
+        $inscripcion->user->notify(new CartaDeAceptacion($pdf->output(),$nombre, $inscripcion->id));
+        $inscripcion->save();
+        return response()->json(['message'=>'Se envio correctamente la carta dictamen.'], 200);
     }
 }
