@@ -38,6 +38,35 @@ class AdminController extends Controller
         );
     }
 
+    public function count_users_asosiaciones(){
+        $socios = User::where('tipo_inscripcion', 'Socios')->count();
+        $asociaciones = [
+            ["value" => "AEPEQ", "label" => "Asociación Estatal Potosina de Enfermería Quirúrgica"],
+            ["value" => "CEQCDMXAM", "label" => "Colegio de Enfermeras Quirúrgicas de la Ciudad de México y Área Metropolitana"],
+            ["value" => "CEQEC", "label" => "Colegio de Enfermería Quirúrgica del Estado de Colima"],
+            ["value" => "CEQDEC", "label" => "Colegio de Enfermería Quirúrgica del Estado de Coahuila"],
+            ["value" => "CEMQA", "label" => "Colegio de Enfermería Medico Quirúrgica de Aguascalientes"],
+            ["value" => "CEQD", "label" => "Colegio de Enfermería Quirúrgica Duranguense"],
+            ["value" => "CLEQ", "label" => "Colegio Leonés de Enfermería Quirúrgica"],
+            ["value" => "AEQM", "label" => "Asociación de Enfermería Quirúrgica de Michoacán"],
+            ["value" => "CENAQ", "label" => "Colegio de Enfermería Nayarita para la Atención Quirúrgica"],
+            ["value" => "CEQNL", "label" => "Colegio de Enfermería Quirúrgica de Nuevo León"],
+            ["value" => "CEQES", "label" => "Enfermeras Quirúrgicas Oaxaqueñas"],
+            ["value" => "AEQQR", "label" => "Asociación de Enfermería Quirúrgica de Quintana Roo"],
+            ["value" => "CEQS", "label" => "Colegio de Enfermería Quirúrgica de Sonora"],
+            ["value" => "CTEQ", "label" => "Colegio Tamaulipeco de Enfermería Quirúrgica"],
+            ["value" => "CEQEZ", "label" => "Colegio de Enfermería Quirúrgica del Estado de Zacatecas"],
+            ["value" => "AEQUIEV", "label" => "Asociación de Enfermeras y Enfermeros Quirúrgicos del Estado de Veracruz"],
+            ["value" => "CQEQ", "label" => "Colegio Queretano de Enfermería Quirúrgica"],
+            ["value" => "FEMEQ", "label" => "Federación Mexicana de Enfermería Quirúrgica"],
+        ];
+        $counts = [];
+        foreach ($asociaciones as $asociacion) {
+            $counts[$asociacion['value']] = User::where('asociacion', $asociacion['value'])->count();
+        }
+        return response()->json(['socios_totales' => $socios, 'asociaciones' => $counts], 200);
+    }
+
     public function getDataSideBar(){
         $t13 = Taller::where('dia', 13)->select('id','aula','dia')->orderByRaw('LENGTH(aula), aula')->get();
         $t14 = Taller::where('dia', 14)->select('id','aula','dia')->orderByRaw('LENGTH(aula), aula')->get();

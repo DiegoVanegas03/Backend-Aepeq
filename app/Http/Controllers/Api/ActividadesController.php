@@ -8,6 +8,7 @@ use App\Models\InscripcionResumenes;
 use App\Models\InscripcionFotografia;
 use App\Models\InscripcionTrajeTipico;
 use App\Models\ColaboradorResumenes;
+use App\Models\ComentariosResumenes;
 use App\Http\Requests\ResumenesRequest;
 use App\Http\Controllers\Functions;
 use App\Http\Requests\FotografiaRequest;
@@ -41,7 +42,7 @@ class ActividadesController extends Controller
             'pedir_correciones',
             'solicitar_extension'
         );
-        $this->middleware('checkRole:7')->only('aceptacionResumen','getResuemenes', 'pedir_correciones','solicitar_extension');
+        $this->middleware('checkRole:7,5')->only('aceptacionResumen','getResuemenes', 'pedir_correciones','solicitar_extension');
     }
 
     public function getInfoTrajeTipico(Request $request){
@@ -316,7 +317,7 @@ class ActividadesController extends Controller
 
     public function getResumenes(){
         $congresistas['no_realizadas'] = InscripcionResumenes::where('estado_de_revision',0)->select('id','nombre_archivo','nombre_investigador','apellidos_investigador','created_at')->get();
-        $congresistas['realizadas'] = InscripcionResumenes::where('estado_de_revision',1)->select('id','nombre_archivo','nombre_investigador', 'apellidos_investigador','dictamen','documento_final','comentarios','oral/escrito')->get();
+        $congresistas['realizadas'] = InscripcionResumenes::where('estado_de_revision',1)->select('id','nombre_archivo','nombre_investigador', 'apellidos_investigador','dictamen','documento_final','oral/escrito')->get();
         foreach($congresistas['no_realizadas'] as $congresista){
             $rutaCompleta ='actividades/resumenes/'. $congresista->nombre_archivo;
             $congresista['url'] = Functions::searchLinksS3($rutaCompleta);
@@ -328,7 +329,7 @@ class ActividadesController extends Controller
             $congresista['url'] = Functions::searchLinksS3($rutaCompleta);
             $congresista['url_dictamen'] = Functions::searchLinksS3('actividades/resumenes/dictamenes/'.$congresista->dictamen);
             $congresista['url_documento_final'] = $congresista->documento_final ? Functions::searchLinksS3('actividades/resumenes/documentos_finales/'.$congresista->documento_final) : null;
-            $congresista->comentarios = $congresista->comentarios === '[]' ? null : Json::decode($congresista->comentarios);
+            $congresista->comentarios = ComentariosResumenes::select('comentario')->where('inscripcion_id', $congresista->id)->get();
         }
         return response()->json(compact('congresistas'),200);
     }
@@ -378,8 +379,6 @@ class ActividadesController extends Controller
         return response()->json(['message'=>'Se solicito correctamente las correcciones.'], 200);
     }
 
-
-
     public function aceptacionResumen(Request $request){
         $request->validate([
             'id_inscripcion' => 'required|integer',
@@ -392,7 +391,13 @@ class ActividadesController extends Controller
         $inscripcion = InscripcionResumenes::find($id_inscripcion);
         $colaboradores = ColaboradorResumenes::where('inscripcion_id',$inscripcion->id)->get();
         $inscripcion->user;
-        $inscripcion->comentarios = $comentarios;
+        $comentarios = Json::decode($comentarios) ? Json::decode($comentarios) : null;
+        foreach($comentarios as $comentario){
+            ComentariosResumenes::create([
+                'inscripcion_id'=>$inscripcion->id,
+                'comentario'=>$comentario,
+            ]);
+        }
         $inscripcion->estado_de_revision = 1;
         //Formato de tiempó
         $months = [
@@ -412,7 +417,6 @@ class ActividadesController extends Controller
         $date = new DateTime();
         $date = $date->format('j') . ' de ' . $months[$date->format('F')] . ' ' . $date->format('Y');
         //Fin formato de tiempo
-        $comentarios = Json::decode($comentarios) ? Json::decode($comentarios) : null;
         $titulo = $request->titulo;
         $pdf = PDF::loadView('resumenes.aceptacion', compact('inscripcion', 'colaboradores','date','comentarios','titulo'));
         $pdf->setPaper('A4'); 

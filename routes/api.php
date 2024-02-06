@@ -35,6 +35,8 @@ Route::post('/user/reset_password/reset_password', [ChangePassword::class, 'rese
 Route::post('/user/reset_password/verificate_password', [ChangePassword::class, 'verificatePassword']);
 Route::post('/user/reset_password/changePassword', [ChangePassword::class, 'changePassword']);
 
+Route::get('/senso/count_users_asosiaciones',[AdminController::class,'count_users_asosiaciones']);
+
 //Rutas de promotores
 Route::get('/promotores/getNombres', [PromotoresController::class, 'getNombres']);
 Route::post('/promotores/registro', [PromotoresController::class, 'register']);
@@ -63,6 +65,7 @@ Route::post('/admin/getTokensRegistro',[PromotoresController::class, 'getTokensR
 //Rutas de talleres
 Route::get('/talleres/getInfoTalleres', [TalleresController::class, 'getInfoTalleres']);
 Route::post('/talleres/getInfoTaller', [TalleresController::class, 'getInfoTaller']);
+Route::get('/talleres/descargar_listas', [TalleresController::class, 'descargar_listas']);
 
 //user talleres
 Route::get('/talleres/infoDataUser', [TalleresController::class, 'getIds']);

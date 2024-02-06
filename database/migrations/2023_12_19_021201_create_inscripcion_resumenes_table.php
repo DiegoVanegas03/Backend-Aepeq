@@ -18,7 +18,6 @@ return new class extends Migration
             $table->string('nombre_investigador');
             $table->string('apellidos_investigador');
             $table->integer('estado_de_revision')->default(0);
-            $table->string('comentarios')->nullable();
             $table->string('dictamen')->nullable();
             $table->string('oral/escrito')->nullable();
             $table->string('documento_final')->nullable();
