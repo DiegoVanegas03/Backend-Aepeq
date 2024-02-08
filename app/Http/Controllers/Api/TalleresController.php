@@ -12,6 +12,7 @@ use App\Notifications\DesinscripcionForzada;
 use App\Events\UpdateTalleres;
 use App\Notifications\CambioDeAula;
 use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\TalleresExport;
 
 class TalleresController extends Controller
 {
@@ -25,7 +26,7 @@ class TalleresController extends Controller
             'addTaller',
             'deleteTaller',
             'changeAula',
-            //'descargar_listas',
+            'descargar_listas',
         );
         $this->middleware('checkRole:7')->only(
             'getInfoTaller',
@@ -33,22 +34,16 @@ class TalleresController extends Controller
             'addTaller',
             'deleteTaller',
             'changeAula',
-            //'descargar_listas'
+            'descargar_listas'
         );
     }
 
     public function descargar_listas(Request $request){
-            // Realiza tu consulta SQL aquí
-            $dia13 = Taller::where('dia', 13)->orderByRaw('LENGTH(aula), aula')->get();
-            $dia14 = Taller::where('dia', 14)->orderByRaw('LENGTH(aula), aula')->get();
-            $dia15 = Taller::where('dia', 15)->orderByRaw('LENGTH(aula), aula')->get();
-
-            $Excel_13 = Excel::create('Dia 13', function($excel) use ($dia13) {
-                $excel->sheet('Dia 13', function($sheet) use ($dia13) {
-                    $sheet->fromArray($dia13);
-                });
-            })->export('xlsx');
-            return $Excel_13->download('xlsx');
+        $request->validate([
+            'dia'=>'required|integer',
+        ]);
+        $dia = $request->dia;
+        return Excel::download(new TalleresExport($dia), 'archivo.xlsx');
     }
 
     public function changeAula(Request $request){
