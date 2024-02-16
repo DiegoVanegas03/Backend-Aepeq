@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Exports\Fotografia;
+use App\Exports\TrajeTipicoExport;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\InscripcionResumenes;
@@ -22,6 +24,8 @@ use Illuminate\Database\Eloquent\Casts\Json;
 use App\Notifications\CartaDeAceptacion;
 use App\Notifications\CorreccionesResumen;
 use Illuminate\Http\UploadedFile;
+use Maatwebsite\Excel\Facades\Excel;
+
 
 class ActividadesController extends Controller
 {
@@ -40,9 +44,85 @@ class ActividadesController extends Controller
             'aceptacionResumen',
             'getResuemenes',
             'pedir_correciones',
+            'solicitar_extension',
+            'getFotografias',
+            'descargarExcel',
+            'getTrajeTipico',
+            'descargarExcelTrajeTipico',
+        );
+        $this->middleware('checkRole:7,5')
+        ->only(
+            'aceptacionResumen',
+            'getResuemenes', 
+            'pedir_correciones',
             'solicitar_extension'
         );
-        $this->middleware('checkRole:7,5')->only('aceptacionResumen','getResuemenes', 'pedir_correciones','solicitar_extension');
+        $this->middleware('checkRole:7,6')
+        ->only(
+            'getFotografias',
+            'descargarExcel',
+        );
+        $this->middleware('checkRole:7,4')
+        ->only(
+            'getTrajeTipico',
+            'descargarExcelTrajeTipico',
+        );
+    }
+
+    public function descargarExcelTrajeTipico(){
+        return Excel::download(new TrajeTipicoExport(), 'archivo.xlsx');
+    }
+
+    public function getTrajeTipico(){
+        $congresistas = InscripcionTrajeTipico::select(
+            'primer_participante',
+            'segundo_participante',
+            'estado_representante',
+            'nombre_doc',
+            'nombre_pista',
+            'confirmacion_segundo_participante',
+        )->get();
+        $carpeta_reseña = 'actividades/traje_tipico/reseña/';
+        $carpeta_mp3 = 'actividades/traje_tipico/mp3/';
+        foreach($congresistas as $item){
+
+            $piv_nombre_uno = $item->primerParticipante->nombres.' '.$item->primerParticipante->apellidos;
+            unset($item->primerParticipante);        
+            $piv_nombre_dos = $item->segundoParticipante->nombres.' '.$item->segundoParticipante->apellidos;
+            unset($item->segundoParticipante);
+            $item['estado_representante'] = $item->estado->estado;
+            unset($item->estado);
+            $item['primer_participante'] = $piv_nombre_uno;
+            $item['segundo_participante'] = $piv_nombre_dos;
+            $item['url_doc'] = Functions::searchLinksS3($carpeta_reseña.$item->nombre_doc);
+            $item['url_mp3'] = Functions::searchLinksS3($carpeta_mp3.$item->nombre_pista);
+        }
+        return response()->json(compact('congresistas'),200);
+    }
+
+
+    public function descargarExcel(){
+        return Excel::download(new Fotografia(), 'archivo.xlsx');
+    }
+
+    public function getFotografias(){
+        $registros = InscripcionFotografia::select(
+            'id',
+            'user_id',
+            'nombre_fotografia',
+            'lugar_y_fecha',
+            'nombre_fotografia',
+            'descripcion',
+            'documento'
+        )->get();
+        
+        $carpeta = 'actividades/fotografia/';
+        foreach($registros as $item){
+            $item['nombre_completo'] = $item->user->nombres.' '. $item->user->apellidos;
+            $item['url'] = Functions::searchLinksS3($carpeta.$item->documento);
+            unset($item['user']);
+        }
+        return response()->json(['congresistas'=>$registros],200);
     }
 
     public function getInfoTrajeTipico(Request $request){

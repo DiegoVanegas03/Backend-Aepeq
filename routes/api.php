@@ -61,6 +61,13 @@ Route::get('/admin/generateLink', [PromotoresController::class, 'generateUrl']);
 Route::get('/admin/getTokens', [PromotoresController::class, 'getTokens']);
 Route::post('/admin/getInfoPromotor',[PromotoresController::class, 'getPromotor']);
 Route::post('/admin/getTokensRegistro',[PromotoresController::class, 'getTokensRegistro']);
+Route::get('/admin/asistencia/infoAsistenciaGeneral',[AdminController::class, 'infoAsistenciaGeneral']);
+Route::post('/admin/asistencia/tomarAsistencia',[AdminController::class, 'tomarAsistencia']);
+Route::post('/admin/asistencia/registerMochila',[AdminController::class, 'registerMochila']);
+Route::get('/admin/asistencia/infoAsistenciaTaller',[AdminController::class, 'infoAsistenciaTaller']);
+Route::get('/admin/asistencia/tomarAsistenciaTaller',[AdminController::class, 'tomarAsistenciaTaller']);
+Route::get('/admin/actualizarQr',[AdminController::class, 'actualizarQr']);
+
 
 //Rutas de talleres
 Route::get('/talleres/getInfoTalleres', [TalleresController::class, 'getInfoTalleres']);
@@ -97,6 +104,10 @@ Route::post('/actividades/aceptarResumen',[ActividadesController::class,'aceptac
 Route::post('/actividades/uploadExtensioFile',[ActividadesController::class,'uploadExtensioFile']);
 Route::post('/actividades/pedir_correciones',[ActividadesController::class,'pedir_correciones']);
 Route::post('/actividades/solicitar_extension',[ActividadesController::class,'solicitar_extension']);
+Route::get('/actividades/fotografia/getFotografias', [ActividadesController::class, 'getFotografias']);
+Route::get('/actividades/fotografia/descargarExcel', [ActividadesController::class, 'descargarExcel']);
+Route::get('/actividades/traje_tipico/getTrajeTipico', [ActividadesController::class, 'getTrajeTipico']);
+Route::get('/actividades/traje_tipico/descargarExcelTrajeTipico', [ActividadesController::class, 'descargarExcelTrajeTipico']);
 
 //Rutas de facturas
 Route::get('/facturas/getAll', [FacturasController::class, 'getAll']);

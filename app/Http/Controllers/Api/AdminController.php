@@ -7,12 +7,16 @@ use App\Http\Controllers\Api\AuthController;
 use Illuminate\Http\Request;
 use App\Models\User;
 use App\Models\Taller;
+use App\Models\Mochila;
 use App\Http\Controllers\Functions;
 use App\Events\UserLoggedOut;
 use App\Notifications\PlayAccount;
 use App\Notifications\PauseAccount;
 use App\Notifications\EmailRegister;
-
+use App\Models\AsistenciaGeneral;
+use App\Models\InscripcionTaller;
+use App\Models\AsistenciaTaller;
+use DateTime;
 
 class AdminController extends Controller
 {
@@ -25,7 +29,12 @@ class AdminController extends Controller
             'play_register',
             'edit_user_info',
             'resend_mail_confirmation',
-            'getDataSideBar'
+            'getDataSideBar',
+            'infoAsistenciaGeneral',
+            'tomarAsistencia',
+            'registerMochila',
+            'infoAsistenciaTaller',
+            'tomarAsistenciaTaller'
         );
         $this->middleware('checkRole:7')->only(
             'total_users_info',
@@ -34,8 +43,160 @@ class AdminController extends Controller
             'play_register',
             'edit_user_info',
             'resend_mail_confirmation',
-            'getDataSideBar'
         );
+        $this->middleware('checkRole:2,3,4,5,6,7')->only(
+            'infoAsistenciaGeneral',
+            'tomarAsistencia',
+            'registerMochila',
+            'getDataSideBar',
+            'infoAsistenciaTaller',
+            'tomarAsistenciaTaller'
+        );
+    }
+
+    public function actualizarQr(){
+        $total_registers = User::take(215)->get();
+        foreach($total_registers as $item){
+            $item->qr_code = Functions::createQr($item->id);
+            $item->save();
+        }
+        return response()->json(['message'=>'Exito'],200);
+    }
+
+    public function tomarAsistenciaTaller(Request $request){
+        $request->validate([
+            'numCongresista' =>'required|integer',
+            'diaAsistencia'=>'required|integer',
+            'aula'=>'required|string',
+        ]);
+        $taller = Taller::where('dia', $request->diaAsistencia)->where('aula',$request->aula)->first();
+        if(AsistenciaTaller::where('taller_id',$taller->id)->where('user_id',$request->numCongresista)->exists()){
+            if(!InscripcionTaller::where('taller_id',$taller->id)->exists()){
+                AsistenciaTaller::where('taller_id',$taller->id)->where('user_id',$request->numCongresista)->delete();
+            }else{
+                response()->json(['error'=>'errorAsistencia', 'message'=>'Parece que ya tomaste asistencia'],200);
+            }
+        }else{
+
+        }
+
+    }
+
+    public function infoAsistenciaTaller (Request $request){
+        $request->validate([
+            'numCongresista' =>'required|integer',
+            'diaAsistencia'=>'required|integer',
+            'aula'=>'required|string',
+        ]);
+        $fechaActual = new DateTime('now');
+        $fechaEspecifica = new DateTime('2024-03-'.$request->diaAsistencia);
+        
+        //if($fechaActual->format('Y-m-d') === $fechaEspecifica->format('Y-m-d')){
+            if(AsistenciaTaller::where('user_id',$request->numCongresista)->where('taller_id')->exists()){
+                return response()->json(['error'=>'errorAsistencia', 'message'=>'Ya tomaste asistencia este día'],500);
+            }else{
+                $registro = User::find($request['numCongresista']);
+                if($registro){
+                    $taller = Taller::where('dia', $request->diaAsistencia)->where('aula',$request->aula)->first();
+                    $user['asistencia_actual'] = AsistenciaTaller::where('taller_id',$taller->id)->count();
+                    $user['nombre_taller'] = $taller->nombre_taller;
+                    $user['nombre_completo'] = $registro->nombres.' '.$registro->apellidos;
+                    $user['taller_id'] = $taller->id;
+                    if(InscripcionTaller::where('taller_id',$taller->id)->exists()){
+                        return response()->json(compact('user'),200);
+                    }else{
+                        $error = 'errorInscripcion';
+                        $message = 'Parece que este usuario no se encuentra inscrito a ese taller.'; 
+                        $collection = InscripcionTaller::where('user_id',$registro->id)->get();
+                        foreach($collection as $item){
+                            if($item->taller->dia === (int)$request->diaAsistencia){
+                                $user['taller_inscrito'] = $item->taller->nombre_taller;
+                                $user['aula_inscrita'] = $item->taller->aula;                  
+                            }
+                        }  
+                        return response()->json(compact('error','message','user'),500);
+                    }
+                }else{
+                    return response()->json(['error'=>'error', 'message'=>'Parece que este usuario no existe'],500);
+                }   
+
+            }            
+        //}else{
+          // return response()->json(['error'=>'errorFecha', 'message'=>'Todavia no es el día para tomar asistencia :)'],500);
+        //}
+    }
+
+    public function registerMochila(Request $request){
+        $request->validate([
+            'numCongresista'=>'required|integer',
+            'mochila'=>'required|boolean',  
+        ]);
+        
+        if(Mochila::where('user_id',$request->numCongresista)->exists()){
+            return response()->json(['error' =>'errorMochila','message'=>'Parece que este usuario ya recibio su mochila'],500);
+        }else{
+            Mochila::create([
+                'user_id'=> $request->numCongresista,
+            ]);
+            return response()->json(['message'=>'Se registro correctamente'],200);
+        }
+    }
+
+    public function  tomarAsistencia(Request $request){
+        $request->validate([
+            'numCongresista' =>'required|integer',
+            'diaAsistencia'=>'required|integer',
+            'mochila' => 'boolean',
+        ]);
+
+        if(AsistenciaGeneral::where('user_id',$request->numCongresista)
+            ->where('dia',$request->diaAsistencia)->exists()){
+                return response()->json(['error'=>'error', 'message'=>'Parece que este usuario ya tomo asistencia este día.'],500);
+        }else{
+            AsistenciaGeneral::create([
+                'user_id' => $request->numCongresista,
+                'dia'=> $request->diaAsistencia,
+            ]);
+            if($request->mochila){
+                Mochila::create([
+                    'user_id'=> $request->numCongresista,
+                ]);
+            }
+            return response()->json(['message'=>'Se tomo la asistencia con exito.'],200);
+        }
+    }
+
+    public function infoAsistenciaGeneral(Request $request){
+        $request->validate([
+            'numCongresista' =>'required|integer',
+            'diaAsistencia'=>'required|integer'
+        ]);
+        $fechaActual = new DateTime('now');
+        $fechaEspecifica = new DateTime('2024-03-'.$request->diaAsistencia);
+        
+        //if($fechaActual->format('Y-m-d') === $fechaEspecifica->format('Y-m-d')){
+            $registro = User::find($request['numCongresista']);
+            if($registro){
+                $mochila = Mochila::where('user_id',$request->numCongresista)->exists();
+                if($registro->estado_del_registro === 1 || $registro->estado_del_registro === 0){
+                    return response()->json(['error'=>'errorEstado', 'message'=>'La cuenta de este usuario se encuenta en revision o pausa, favor de mandarlo a la mesa de registro para que lo auxilien :).', 'mochila'=>$mochila],500);
+                }else{
+                    if(AsistenciaGeneral::where('user_id',$request->numCongresista)
+                    ->where('dia',$request->diaAsistencia)->exists()){
+                        return response()->json(['error'=>'errorAsistencia', 'message'=>'Parece que este usuario ya tomo asistencia este día.', 'mochila'=>$mochila],500);
+                    }else{
+                        $user['nombre_completo'] = $registro->nombres.' '.$registro->apellidos;
+                        $user['mochila'] = $mochila;
+                        return response()->json(compact('user'),200);
+                    }
+                }
+            }else{
+                return response()->json(['error'=>'error', 'message'=>'Parece que este usuario no existe'],500);
+            }   
+        //}else{
+            //return response()->json(['error'=>'errorFecha', 'message'=>'Todavia no es el día para tomar asistencia :)'],500);
+        //}
+        
     }
 
     public function count_users_asosiaciones(){
@@ -98,6 +259,14 @@ class AdminController extends Controller
                 case "tipo_inscripcion":
                     $user[$campo] = $info;
                     if($info === "Socios" || $info === "Escuelas"){
+                        if(!$request->hasFile('documento') && !$user->documento_certificado){
+                            return response()->json([
+                                'error'=>'error', 
+                                'message'=>"Es te usuario no  tiene documento que conste su 
+                                            asosiacion o escuela, para el si es NECESARIO que
+                                            subas un archivo."
+                                ],500);
+                        }
                         if($request->hasFile('documento')){
                             $file =  $request->file('documento');
                             $nombre = "certificado_" . $user->id;
@@ -110,8 +279,6 @@ class AdminController extends Controller
                             }
                             $nombre_doc = Functions::upS3Services($file, $carpeta, $nombre);
                             $user->documento_certificado = $nombre_doc;
-                        }else{
-                            return response()->json(['error'=>'error', 'message'=>"Falta documento"],500);
                         }
                     }
                     break;
@@ -137,7 +304,6 @@ class AdminController extends Controller
                     }
                     break;
                 default:
-                    $info = trim($info);
                     $user[$campo] = $info;
                     break;
             }

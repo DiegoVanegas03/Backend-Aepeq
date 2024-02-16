@@ -16,7 +16,7 @@ return new class extends Migration
             $table->foreignId('user_id')->constrained('users')->cascadeOnDelete()->cascadeOnUpdate();
             $table->string('nombre_fotografia');
             $table->string('lugar_y_fecha');
-            $table->string('descripcion',500);
+            $table->string('descripcion',1000);
             $table->string('documento')->nullable();
             $table->timestamps();
         });

@@ -24,10 +24,12 @@ class ProgramaController extends Controller
         }
         $programa[$data['campo']] = $data['valor'];
         $programa->save();
-        $users = User::all();
-        foreach($users as $user){
-            $user->notify(new CambioEnPrograma($data['campo'], $data['valor']));
-        }
+
+        //$users = User::all();
+        //foreach($users as $user){
+          //  $user->notify(new CambioEnPrograma($data['campo'], $data['valor']));
+        //}
+        
         return response()->json(['message' => 'Se actualizó el registro'], 200);
     }
 
