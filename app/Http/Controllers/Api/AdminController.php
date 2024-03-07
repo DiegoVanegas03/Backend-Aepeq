@@ -16,6 +16,10 @@ use App\Notifications\EmailRegister;
 use App\Models\AsistenciaGeneral;
 use App\Models\InscripcionTaller;
 use App\Models\AsistenciaTaller;
+use App\Models\ConstanciaGeneral;
+use App\Models\ConstanciaTaller;
+use Webklex\PDFMerger\Facades\PDFMergerFacade as PDFMerger;
+use Illuminate\Http\UploadedFile;
 use DateTime;
 
 class AdminController extends Controller
@@ -34,7 +38,12 @@ class AdminController extends Controller
             'tomarAsistencia',
             'registerMochila',
             'infoAsistenciaTaller',
-            'tomarAsistenciaTaller'
+            'tomarAsistenciaTaller',
+            'generar_constancias',
+            'get_info_constancias_generales',
+            'generar_constancias_taller',
+            'get_info_constancias_talleres',
+            'mergeConstanciasTalleres'
         );
         $this->middleware('checkRole:7')->only(
             'total_users_info',
@@ -43,6 +52,11 @@ class AdminController extends Controller
             'play_register',
             'edit_user_info',
             'resend_mail_confirmation',
+            'generar_constancias',
+            'get_info_constancias_generales',
+            'generar_constancias_taller',
+            'get_info_constancias_talleres',
+            'mergeConstanciasTalleres'
         );
         $this->middleware('checkRole:2,3,4,5,6,7')->only(
             'infoAsistenciaGeneral',
@@ -54,13 +68,223 @@ class AdminController extends Controller
         );
     }
 
-    public function actualizarQr(){
-        $total_registers = User::take(215)->get();
-        foreach($total_registers as $item){
-            $item->qr_code = Functions::createQr($item->id);
-            $item->save();
+    public function mergeConstanciasTalleres(Request $request){
+        $request->validate([
+            'arrayDocuments' => 'required',
+        ]);
+        $documents = json_decode( $request['arrayDocuments']);
+        $rutaCompleta = '/constancias/talleres/';
+        $pdf = PDFMerger::init();
+        foreach($documents as $item){
+            if($item){
+                try{
+                    $content = Functions::getFile($rutaCompleta.$item);
+                    $pdf->addString($content, 'all');
+                }catch(\Exception $e){
+                    return response()->json([
+                        'error' => 'Error al obtener el objeto desde S3',
+                        'message' => $e->getMessage()
+                    ], 500);
+                }
+            }
         }
-        return response()->json(['message'=>'Exito'],200);
+        $pdf->merge();
+        $content = $pdf->output();
+        $tempFile = tempnam(sys_get_temp_dir(), 'pdf');
+        file_put_contents($tempFile, $content);
+        $nombre = 'temporal_file';
+        $file = new UploadedFile($tempFile, 'undefined.pdf');
+        $nombre_doc = Functions::upS3Services($file,'',$nombre);
+        unlink($tempFile);
+        $url = Functions::searchLinksS3($nombre_doc);
+        return response()->json(compact('url'),200);
+    }
+
+    public function get_info_constancias_talleres(Request $request){
+        $request->validate([
+            'idTaller'=>'required',
+        ]);
+        $usuariosSinConstancia =User::select(
+            'users.id',
+            'users.nombres',
+            'users.apellidos',
+                )->join(
+                'inscripcion_talleres',
+                'users.id',
+                '=',
+                'inscripcion_talleres.user_id'
+                    )->where('inscripcion_talleres.taller_id',$request['idTaller'])->leftJoin(
+                        'constancias_taller',
+                        'inscripcion_talleres.id',
+                        '=',
+                        'constancias_taller.ins_taller_id'
+                        )->whereNull(
+                            'constancias_taller.ins_taller_id'
+                            )->orWhere('constancias_taller.correccion',1)
+                            ->limit(70)->get();
+        $usuariosConConstancia = ConstanciaTaller::select(
+            'constancias_taller.folio',
+            'constancias_taller.nombre_doc',
+            'inscripcion_talleres.user_id',
+            )->where(
+                'constancias_taller.correccion',0)
+                ->join(
+                    'inscripcion_talleres',
+                    'constancias_taller.ins_taller_id',
+                    '=',
+                    'inscripcion_talleres.id'
+                    )->where('inscripcion_talleres.taller_id',$request['idTaller'])->get();
+        $rutaCompleta = '/constancias/talleres/';
+        foreach($usuariosConConstancia as $item){
+            $item['url_doc'] = Functions::searchLinksS3($rutaCompleta.$item->nombre_doc);
+        };
+        return response()->json(compact('usuariosSinConstancia','usuariosConConstancia'),200);
+    }
+
+    public function generar_constancias_taller(Request $request){
+        $request->validate([
+            'id_aula'=> 'required|integer',
+        ]);
+        $folios_hojas=[
+            13=>[
+                'hoja'=>8,
+                'folio'=>141,
+            ],
+            14=>[
+                'hoja'=>9,
+                'folio'=>616,
+            ],
+            15=>[
+                'hoja'=>10,
+                'folio'=>916,
+            ],
+        ];
+        $taller = Taller::find($request['id_aula']);
+        $registros = InscripcionTaller::select(
+            'inscripcion_talleres.id',
+            'inscripcion_talleres.user_id',
+            )->where('inscripcion_talleres.taller_id',$taller->id)->leftJoin(
+                'constancias_taller',
+                'inscripcion_talleres.id',
+                '=',
+                'constancias_taller.ins_taller_id'
+                )->whereNull(
+                    'constancias_taller.ins_taller_id'
+                    )->orWhere('constancias_taller.correccion',1)
+                    ->limit(70)->get();
+        $imageURL ='talleres/con_taller_'.$taller->id.'.jpg';
+        $hoja = $folios_hojas[$taller->dia]['hoja'];
+        $rutaCompleta ='constancias/talleres/';
+        foreach($registros as $item){
+            $inscripcion = InscripcionTaller::where('user_id',$item->user->id
+                )->where('taller_id',$taller->id)->first();
+            $constancia = ConstanciaTaller::where('ins_taller_id',$inscripcion->id)->first();
+            
+            if($constancia){
+                //caso de correcion de constancia
+                if($constancia->correccion === 1){
+                    Functions::generate_constancia($item->user,$imageURL,$hoja,$constancia->folio,$rutaCompleta,'taller');
+                    $constancia->correccion = 0;
+                    $constancia->save();
+                }
+            }else{
+                //si exixste un folio que quedo disponible.
+                $constancia=ConstanciaTaller::whereNull('ins_taller_id')->where('hoja',$hoja)->first();
+                if($constancia){
+                    $folio = $constancia->folio;
+                    $nombre_doc = Functions::generate_constancia($item->user,$imageURL,$hoja,$constancia->folio,$rutaCompleta,'taller');
+                    $constancia->ins_taller_id = $item->id;
+                    $constancia->nombre_doc = $nombre_doc;
+                    $constancia->save();
+                }else{
+                    //en caso que no exista la constancia se genera desde 0
+                    $folio = $folios_hojas[$taller->dia]['folio'];
+                    $count = ConstanciaTaller::join(                
+                        'inscripcion_talleres',
+                        'constancias_taller.ins_taller_id',
+                        '=',
+                        'inscripcion_talleres.id'
+                        )->join(
+                            'talleres',
+                            'inscripcion_talleres.taller_id',
+                            '=',
+                            'talleres.id'
+                        )->where('talleres.dia',$taller->dia)->count();
+                    $folio =$folio +
+                     $count;
+                    //hacer left join para contar todos los talleres que tengan el mismo dia que el que se va hacer.
+                    $nombre_doc = Functions::generate_constancia($item->user,$imageURL,$hoja,$folio, $rutaCompleta,'taller');
+                    ConstanciaTaller::create([
+                        'ins_taller_id'=>$item->id,
+                        'hoja'=>$hoja,
+                        'folio'=>$folio,
+                        'nombre_doc'=>$nombre_doc,
+                    ]);
+                }
+            }
+        }
+        return response()->json(['message'=>'Se generaron con exito las constancias.'],200);
+    }
+
+    public function get_info_constancias_generales(Request $request){
+        $usuariosSinConstancia = User::select('users.id','users.nombres','users.apellidos')->leftJoin(
+            'constancias_general',
+            'users.id',
+            '=',
+            'constancias_general.user_id'
+            )->whereNull('constancias_general.user_id')->orWhere('constancias_general.correccion',1)->get();
+        $usuariosConConstancia = ConstanciaGeneral::select('id','user_id','nombre_doc')->where('correccion',0)->get();
+        $rutaCompleta = '/constancias/general/';
+        foreach($usuariosConConstancia as $item){
+            $item['url_doc'] = Functions::searchLinksS3($rutaCompleta.$item->nombre_doc);
+        };
+        return response()->json(compact('usuariosSinConstancia','usuariosConConstancia'),200);
+    }
+
+    public function generar_constancias(){
+        $users = User::select(
+            'users.id',
+            'users.nombres',
+            'users.apellidos'
+            )->leftJoin(
+                'constancias_general',
+                'users.id',
+                '=',
+                'constancias_general.user_id'
+                )->whereNull(
+                    'constancias_general.user_id'
+                    )->orWhere('constancias_general.correccion',1)
+                    ->limit(70)->get();
+
+        foreach($users as $user){
+            $asistencias = AsistenciaGeneral::where('user_id',$user->id)->count();
+            if($asistencias >= 1){ // cambiar a 1 antes de deploy
+
+                $rutaCompleta ='constancias/general/';
+                $constancia = ConstanciaGeneral::where('user_id',$user->id)->first();
+                if($constancia){
+                    if($constancia->correccion === 1){
+                        $folio = 1240 + $constancia->id -1;
+                        $imageURL ='CONSTANCIA.jpg';
+
+                        Functions::generate_constancia($user,$imageURL,11,$folio,$rutaCompleta,'general');
+                        $constancia->correccion = 0;
+                        $constancia->save();
+                    }
+                }else{
+                    $folio = 1240 + ConstanciaGeneral::count();
+                    $imageURL ='CONSTANCIA.jpg';
+                    $nombre_doc = Functions::generate_constancia($user,$imageURL,11,$folio,$rutaCompleta,'general');
+                    ConstanciaGeneral::create([
+                        'user_id'=>$user->id,
+                        'nombre_doc'=>$nombre_doc,
+                    ]);
+                }
+            }
+        }
+        return response()->json([
+            'message'=>'Se realizaron exito las constancias'
+        ],200);
     }
 
     public function tomarAsistenciaTaller(Request $request){
@@ -71,15 +295,14 @@ class AdminController extends Controller
         ]);
         $taller = Taller::where('dia', $request->diaAsistencia)->where('aula',$request->aula)->first();
         if(AsistenciaTaller::where('taller_id',$taller->id)->where('user_id',$request->numCongresista)->exists()){
-            if(!InscripcionTaller::where('taller_id',$taller->id)->exists()){
-                AsistenciaTaller::where('taller_id',$taller->id)->where('user_id',$request->numCongresista)->delete();
-            }else{
-                response()->json(['error'=>'errorAsistencia', 'message'=>'Parece que ya tomaste asistencia'],200);
-            }
+            return response()->json(['error'=>'errorAsistencia', 'message'=>'Parece que ya tomaste asistencia'],500);
         }else{
-
+            AsistenciaTaller::create([
+                'taller_id'=>$taller->id,
+                'user_id'=>$request['numCongresista'],
+            ]);
+            return response()->json(['message'=>'Se tomo asistencia con exito'],200);
         }
-
     }
 
     public function infoAsistenciaTaller (Request $request){
@@ -91,39 +314,46 @@ class AdminController extends Controller
         $fechaActual = new DateTime('now');
         $fechaEspecifica = new DateTime('2024-03-'.$request->diaAsistencia);
         
-        //if($fechaActual->format('Y-m-d') === $fechaEspecifica->format('Y-m-d')){
-            if(AsistenciaTaller::where('user_id',$request->numCongresista)->where('taller_id')->exists()){
-                return response()->json(['error'=>'errorAsistencia', 'message'=>'Ya tomaste asistencia este día'],500);
-            }else{
-                $registro = User::find($request['numCongresista']);
-                if($registro){
-                    $taller = Taller::where('dia', $request->diaAsistencia)->where('aula',$request->aula)->first();
-                    $user['asistencia_actual'] = AsistenciaTaller::where('taller_id',$taller->id)->count();
-                    $user['nombre_taller'] = $taller->nombre_taller;
-                    $user['nombre_completo'] = $registro->nombres.' '.$registro->apellidos;
-                    $user['taller_id'] = $taller->id;
-                    if(InscripcionTaller::where('taller_id',$taller->id)->exists()){
-                        return response()->json(compact('user'),200);
-                    }else{
-                        $error = 'errorInscripcion';
-                        $message = 'Parece que este usuario no se encuentra inscrito a ese taller.'; 
-                        $collection = InscripcionTaller::where('user_id',$registro->id)->get();
-                        foreach($collection as $item){
-                            if($item->taller->dia === (int)$request->diaAsistencia){
-                                $user['taller_inscrito'] = $item->taller->nombre_taller;
-                                $user['aula_inscrita'] = $item->taller->aula;                  
-                            }
-                        }  
-                        return response()->json(compact('error','message','user'),500);
-                    }
+        if($fechaActual->format('Y-m-d') === $fechaEspecifica->format('Y-m-d')){
+            if(AsistenciaGeneral::where('user_id',$request->numCongresista)
+            ->where('dia',$request->diaAsistencia)->exists()){
+                $taller = Taller::where('dia', $request->diaAsistencia)->where('aula',$request->aula)->first();
+                if(AsistenciaTaller::where('user_id',$request->numCongresista)->where('taller_id', $taller->id)->exists()){
+                    return response()->json(['error'=>'errorAsistencia', 'message'=>'Ya tomaste asistencia este dia'],500);
                 }else{
-                    return response()->json(['error'=>'error', 'message'=>'Parece que este usuario no existe'],500);
-                }   
-
+                    $registro = User::find($request['numCongresista']);
+                    if($registro){
+                            $user['asistencia_actual'] = AsistenciaTaller::where('taller_id',$taller->id)->count();
+                            $user['nombre_taller'] = $taller->nombre_taller;
+                            $user['nombre_completo'] = $registro->nombres.' '.$registro->apellidos;
+                            $user['taller_id'] = $taller->id;
+                            if(InscripcionTaller::where('taller_id',$taller->id)->exists()){
+                                return response()->json(compact('user'),200);
+                            }else{
+                                $error = 'errorInscripcion';
+                                $message = 'Parece que este usuario no se encuentra inscrito a ese taller.'; 
+                                $collection = InscripcionTaller::where('user_id',$registro->id)->get();
+                                foreach($collection as $item){
+                                    if($item->taller->dia === (int)$request->diaAsistencia){
+                                        $user['taller_inscrito'] = $item->taller->nombre_taller;
+                                        $user['aula_inscrita'] = $item->taller->aula;                  
+                                    }
+                                }  
+                                return response()->json(compact('error','message','user'),500);
+                            }
+                        }else{
+                            return response()->json(['message'=>'Tu cuenta se encuentra en pausa o '],500);
+                        } 
+                }
+            }else{
+                return response()->json([
+                    'error'=>'errorAsistencia',
+                    'message'=>'Primero debe tomar asistencia este dia.'
+                ],500);
             }            
-        //}else{
-          // return response()->json(['error'=>'errorFecha', 'message'=>'Todavia no es el día para tomar asistencia :)'],500);
-        //}
+        }else{
+            return response()->json(['error'=>'errorFecha', 'message'=>'Todavia no es el día para tomar asistencia :)'],500);
+        }
     }
 
     public function registerMochila(Request $request){
@@ -174,7 +404,7 @@ class AdminController extends Controller
         $fechaActual = new DateTime('now');
         $fechaEspecifica = new DateTime('2024-03-'.$request->diaAsistencia);
         
-        //if($fechaActual->format('Y-m-d') === $fechaEspecifica->format('Y-m-d')){
+        if($fechaActual->format('Y-m-d') === $fechaEspecifica->format('Y-m-d')){
             $registro = User::find($request['numCongresista']);
             if($registro){
                 $mochila = Mochila::where('user_id',$request->numCongresista)->exists();
@@ -193,9 +423,9 @@ class AdminController extends Controller
             }else{
                 return response()->json(['error'=>'error', 'message'=>'Parece que este usuario no existe'],500);
             }   
-        //}else{
-            //return response()->json(['error'=>'errorFecha', 'message'=>'Todavia no es el día para tomar asistencia :)'],500);
-        //}
+        }else{
+            return response()->json(['error'=>'errorFecha', 'message'=>'Todavia no es el día para tomar asistencia :)'],500);
+        }
         
     }
 
@@ -256,6 +486,23 @@ class AdminController extends Controller
         $user = User::findOrFail($id);
         try{
             switch($campo){
+                case "apellidos":
+                case "nombres":
+                    $user[$campo] = $info;
+                    $constancia_general = ConstanciaGeneral::where('user_id',$user->id)->first();
+                    if($constancia_general){
+                        $constancia_general->correccion = 1;
+                        $constancia_general->save();
+                    }
+                    $inscripciones = InscripcionTaller::where('user_id',$user->id)->get();
+                    $inscripciones->each(function ($item) {
+                        $constancia = ConstanciaTaller::where('ins_taller_id', $item->id)->first();
+                        if($constancia){
+                            $constancia->correccion = 1;
+                            $constancia->save();
+                        }
+                    });
+                    break;
                 case "tipo_inscripcion":
                     $user[$campo] = $info;
                     if($info === "Socios" || $info === "Escuelas"){

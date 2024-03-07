@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\AdminController;
 use App\Http\Controllers\Api\ChangePassword;
 use App\Http\Controllers\Api\MailController;
 use App\Http\Controllers\Api\FacturasController;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 /*
 |--------------------------------------------------------------------------
@@ -29,6 +30,8 @@ Route::get('/user/partial_info', [AuthController::class, 'partial_info']);
 Route::get('/email/verify',[MailController::class,'verifiedMail']);
 Route::get('/email/user/resend',[MailController::class,'resendEmail']);
 Route::get('/user/total_info', [AuthController::class, 'total_info']);
+Route::get('/user/constancia', [AuthController::class,'get_constancia']);
+Route::post('/user/register_evaluacion', [AuthController::class,'register_evaluacion']);
 Route::post('/recoveryPwd/evalueteToken', [ChangePassword::class, 'evaluateTokenAccess']);
 Route::post('/user/reset_password/send_email', [ChangePassword::class, 'sendEmail']);
 Route::post('/user/reset_password/reset_password', [ChangePassword::class, 'resetPassword']);
@@ -65,8 +68,12 @@ Route::get('/admin/asistencia/infoAsistenciaGeneral',[AdminController::class, 'i
 Route::post('/admin/asistencia/tomarAsistencia',[AdminController::class, 'tomarAsistencia']);
 Route::post('/admin/asistencia/registerMochila',[AdminController::class, 'registerMochila']);
 Route::get('/admin/asistencia/infoAsistenciaTaller',[AdminController::class, 'infoAsistenciaTaller']);
-Route::get('/admin/asistencia/tomarAsistenciaTaller',[AdminController::class, 'tomarAsistenciaTaller']);
-Route::get('/admin/actualizarQr',[AdminController::class, 'actualizarQr']);
+Route::post('/admin/asistencia/tomarAsistenciaTaller',[AdminController::class, 'tomarAsistenciaTaller']);
+Route::get('/admin/get_info_constancias_generales',[AdminController::class, 'get_info_constancias_generales']);
+Route::get('/admin/generar_constancias',[AdminController::class, 'generar_constancias']);
+Route::post('/admin/generar_constancias_taller',[AdminController::class, 'generar_constancias_taller']);
+Route::post('/admin/get_info_constancias_talleres',[AdminController::class, 'get_info_constancias_talleres']);
+Route::get('/admin/mergeConstanciasTalleres',[AdminController::class, 'mergeConstanciasTalleres']);
 
 
 //Rutas de talleres

@@ -5,8 +5,6 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Programa;
-use App\Models\User;
-use App\Notifications\CambioEnPrograma;
 
 class ProgramaController extends Controller
 {
@@ -23,13 +21,7 @@ class ProgramaController extends Controller
             return response()->json(['message' => 'No se encontró el registro'], 404);
         }
         $programa[$data['campo']] = $data['valor'];
-        $programa->save();
-
-        //$users = User::all();
-        //foreach($users as $user){
-          //  $user->notify(new CambioEnPrograma($data['campo'], $data['valor']));
-        //}
-        
+        $programa->save();        
         return response()->json(['message' => 'Se actualizó el registro'], 200);
     }
 

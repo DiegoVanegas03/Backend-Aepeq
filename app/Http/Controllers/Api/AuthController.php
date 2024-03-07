@@ -14,12 +14,45 @@ use App\Http\Controllers\Functions;
 use App\Events\UserLoggedOut;
 use App\Events\UpdateRegistersAdmin;
 use App\Notifications\EmailRegister;
+use App\Models\ConstanciaGeneral;
+use App\Models\Evaluacion;
 use DateTime;
+
 
 class AuthController extends Controller
 {
     public function __construct(){
-        $this->middleware('auth:sanctum')->only('partial_info', 'total_info', 'logout');
+        $this->middleware('auth:sanctum')->only('partial_info', 'get_constancia','total_info', 'logout','register_evaluacion');
+    }
+
+    public function register_evaluacion(Request $request){
+        $request->validate([
+            'selected_q'=>'required|string',
+            'response_open_q' =>'required|string',
+        ]);
+        $user = $request->user();
+        $selected_q = $request['selected_q'];
+        $response_open_q = json_decode($request['response_open_q']);
+        Evaluacion::create([
+            'user_id'=>$user->id,
+            'repuestas_select'=>$selected_q,
+            'mas_gustado'=>$response_open_q[0],
+            'menos_gustado'=>$response_open_q[1],
+            'mejoras'=>$response_open_q[2],
+        ]);
+        $constancia = ConstanciaGeneral::where('user_id',$user->id)->first();
+        $rutaCompleta = '/constancias/general'.$constancia['nombre_doc'];
+        $url = Functions::searchLinksS3($rutaCompleta);
+        return response()->json(compact('url'),200);
+    }
+
+
+    public function get_constancia(Request $request){
+        $user = $request->user();
+        $constancia = ConstanciaGeneral::where('user_id',$user->id)->first();
+        $rutaCompleta = '/constancias/general'.$constancia['nombre_doc'];
+        $url = Functions::searchLinksS3($rutaCompleta);
+        return response()->json(compact('url'),200);
     }
 
     static function userAndLinks(User $user){
@@ -67,6 +100,7 @@ class AuthController extends Controller
             $expiration = $token->expires_at;
             // Convertir la fecha de expiración a milisegundos
             $expirationInMilliseconds = $expiration->getTimestamp() * 1000;
+            $fechaActual = new DateTime('now');
             $userData = [
                 'NumeroCongresista' => $user->id,
                 'Nombre' => $user->nombres,
@@ -74,6 +108,8 @@ class AuthController extends Controller
                 'Rol' => $user->rol,
                 'time_exp'=> $expirationInMilliseconds,
                 'email_verified' => $user->hasVerifiedEmail(),
+                'fechaActual'=>$fechaActual->format('Y-m-d'),
+                'evaluacion'=>Evaluacion::where('user_id',$user->id)->exists(),
             ];
             return response()->json(['user' => $userData], 200);
         }
@@ -99,7 +135,7 @@ class AuthController extends Controller
         $token = $tokenResult->plainTextToken;
         $tokenExpiration = $tokenResult->accessToken->expires_at;
         $expirationInMilliseconds = $tokenExpiration->getTimestamp() * 1000;
-
+        $fechaActual = new DateTime('now');
         $userData = [
             'NumeroCongresista' => $user->id,
             'Nombre' => $user->nombres,
@@ -107,6 +143,8 @@ class AuthController extends Controller
             'Rol' => $user->rol,
             'time_exp'=> $expirationInMilliseconds,
             'email_verified' => $user->hasVerifiedEmail(),
+            'fechaActual'=>$fechaActual->format('Y-m-d'),
+            'evaluacion'=>Evaluacion::where('user_id',$user->id)->exists(),
         ];
         return response()->json(['token' => $token, 'user' => $userData], 200);
     }

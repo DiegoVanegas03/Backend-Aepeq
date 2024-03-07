@@ -11,7 +11,7 @@ class InscripcionTaller extends Model
     
     protected $table = 'inscripcion_talleres';
 
-    protected $fillable = ['user_id','taller_id'];
+    protected $fillable = ['id','user_id','taller_id'];
 
     public function user()
     {

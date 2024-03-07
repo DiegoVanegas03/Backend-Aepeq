@@ -18,7 +18,7 @@ class ComitesController extends Controller{
         $valor = $request['valor'];
         $comite = Comite::find($id);
         if(!$comite){
-            return response()->json(['message' => 'No se encontro el programa'], 404);
+            return response()->json(['message' => 'No se encontro el comite'], 404);
         }
         $comite[$campo] = $valor;
         $comite->save();

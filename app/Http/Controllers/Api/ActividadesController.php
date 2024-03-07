@@ -57,13 +57,10 @@ class ActividadesController extends Controller
             'pedir_correciones',
             'solicitar_extension'
         );
-        $this->middleware('checkRole:7,6')
+        $this->middleware('checkRole:7,6,4')
         ->only(
             'getFotografias',
             'descargarExcel',
-        );
-        $this->middleware('checkRole:7,4')
-        ->only(
             'getTrajeTipico',
             'descargarExcelTrajeTipico',
         );
