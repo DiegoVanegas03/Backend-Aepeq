@@ -10,7 +10,6 @@ use App\Http\Controllers\Api\AdminController;
 use App\Http\Controllers\Api\ChangePassword;
 use App\Http\Controllers\Api\MailController;
 use App\Http\Controllers\Api\FacturasController;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 /*
 |--------------------------------------------------------------------------
@@ -74,6 +73,8 @@ Route::get('/admin/generar_constancias',[AdminController::class, 'generar_consta
 Route::post('/admin/generar_constancias_taller',[AdminController::class, 'generar_constancias_taller']);
 Route::post('/admin/get_info_constancias_talleres',[AdminController::class, 'get_info_constancias_talleres']);
 Route::get('/admin/mergeConstanciasTalleres',[AdminController::class, 'mergeConstanciasTalleres']);
+Route::get('/admin/recordatorio_congreso',[MailController::class, 'mailRecordatorio']);
+
 
 
 //Rutas de talleres

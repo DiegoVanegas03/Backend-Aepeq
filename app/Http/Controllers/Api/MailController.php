@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\User;
 use App\Notifications\EmailRegister;
+use App\Notifications\RecuerdoQr;
+use Barryvdh\DomPDF\Facade\Pdf;
 use DateTime;
 
 class MailController extends Controller
@@ -13,6 +15,37 @@ class MailController extends Controller
     public function __construct(){
         $this->middleware('auth:sanctum')->only('resendEmail');
     }
+
+    public function SendMailPersonalizate(Request $request){
+        $request->validate([
+            'message'=> 'required|string',
+        ]);
+
+        $users = User::all();
+
+        foreach($users as $item){
+            
+        }
+    }
+
+    public function mailRecordatorio(){
+        $users = User::all();
+        foreach($users as $user){
+            $congresista = [
+                'qr_image' => 'data:image/png;base64,'.$user->qr_code,
+                'nombre'=>$user->nombres,
+                'numero'=>$user->id,
+                'apellido'=>$user->apellidos,
+            ];
+            $pdf = PDF::loadView('congresista.recordatorio_qr', compact('congresista'));
+            $pdf->setPaper('A4'); 
+            $pdf->setOption('chroot',realpath(''));
+    
+            $user->notify(new RecuerdoQr($pdf));
+        }
+        return response()->json(['message'=>'Recordatorio enviado'],200);
+    }
+
 
     public function verifiedMail(Request $request){
         $user_id = $request['id'];
