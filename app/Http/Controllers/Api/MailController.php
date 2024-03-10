@@ -6,8 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\User;
 use App\Notifications\EmailRegister;
-use App\Notifications\RecuerdoQr;
-use Barryvdh\DomPDF\Facade\Pdf;
+use App\Jobs\CorreoMassivo;
 use DateTime;
 
 class MailController extends Controller
@@ -31,17 +30,7 @@ class MailController extends Controller
     public function mailRecordatorio(){
         $users = User::all();
         foreach($users as $user){
-            $congresista = [
-                'qr_image' => 'data:image/png;base64,'.$user->qr_code,
-                'nombre'=>$user->nombres,
-                'numero'=>$user->id,
-                'apellido'=>$user->apellidos,
-            ];
-            $pdf = PDF::loadView('congresista.recordatorio_qr', compact('congresista'));
-            $pdf->setPaper('A4'); 
-            $pdf->setOption('chroot',realpath(''));
-    
-            $user->notify(new RecuerdoQr($pdf));
+            CorreoMassivo::dispatch($user);
         }
         return response()->json(['message'=>'Recordatorio enviado'],200);
     }
