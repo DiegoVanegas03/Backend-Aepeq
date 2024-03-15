@@ -74,6 +74,8 @@ Route::post('/admin/generar_constancias_taller',[AdminController::class, 'genera
 Route::post('/admin/get_info_constancias_talleres',[AdminController::class, 'get_info_constancias_talleres']);
 Route::get('/admin/mergeConstanciasTalleres',[AdminController::class, 'mergeConstanciasTalleres']);
 Route::get('/admin/recordatorio_congreso',[MailController::class, 'mailRecordatorio']);
+Route::post('/admin/GetInfoConstanciaBajoAgua',[AdminController::class, 'GetInfoConstanciaBajoAgua']);
+Route::post('/admin/generar_constancias_bajo_agua',[AdminController::class, 'ConstanciasBajoElAgua']);
 
 
 

@@ -22,7 +22,8 @@ class TallerSheets implements WithTitle, FromCollection, WithHeadings{
     {
         return [
             'numero_congresista',
-            'nombre_completo'
+            'nombre_completo',
+            'correo'
         ];
     }
 
@@ -30,6 +31,7 @@ class TallerSheets implements WithTitle, FromCollection, WithHeadings{
         $collection = InscripcionTaller::select('user_id')->with('user')->where('taller_id',$this->id)->get();
         foreach($collection as $row){
             $row['nombre'] = $row->user->nombres.' '.$row->user->apellidos;
+            $row['email'] = $row->user->email;
             $row['user'] = null;
         }
         return $collection;

@@ -20,6 +20,7 @@ use App\Models\ConstanciaGeneral;
 use App\Models\ConstanciaTaller;
 use Webklex\PDFMerger\Facades\PDFMergerFacade as PDFMerger;
 use Illuminate\Http\UploadedFile;
+use App\Models\ConstanciasBajoAgua;
 use DateTime;
 
 class AdminController extends Controller
@@ -67,6 +68,72 @@ class AdminController extends Controller
             'tomarAsistenciaTaller'
         );
     }
+
+    public function deleteConBajoAgua(Request $request){
+        $request->validate([
+            'folio' =>'required'
+        ]);
+        $constancia = ConstanciasBajoAgua::where('folio',$request['folio'])->first();
+        $constancia->taller_id = null;
+        $constancia->nombre_completo = null;
+        $constancia->save();
+        return response()->json(['message'=>'Se elimino correctamente'],200);
+    }
+
+    public function GetInfoConstanciaBajoAgua(Request $request){
+        $request->validate([
+            'idTaller'=>'required',
+        ]);
+        $rutaCompleta ='constancias/talleres_bajo_agua/';
+        $constancias = ConstanciasBajoAgua::where('taller_id', $request['idTaller'])->get();
+        foreach($constancias as $item){
+            $item['url_doc'] = Functions::searchLinksS3($rutaCompleta.$item->nombre_doc);
+        };
+
+        $nombre_taller = Taller::where('id',$request['idTaller'])->first()->nombre_taller;
+        return response()->json(compact('constancias','nombre_taller'),200);
+    }
+
+    public function ConstanciasBajoElAgua(Request $request){
+        $request->validate([
+            'id_aula' =>'required',
+            'nombre_completo' => 'required',
+            'correccion' => 'required',
+        ]);     
+        $hoja = 11;
+        $rutaCompleta ='constancias/talleres_bajo_agua/';
+        if($request['correccion'] === 1){
+            $folio =  $request['folio'];
+            $constancia = ConstanciasBajoAgua::where('folio',$folio)->first();
+            $constancia->nombre_completo = $request['nombre_completo'];
+            $imageURL ='talleres/con_taller_'.$constancia->taller_id.'.jpg';
+            Functions::generate_constancia_bajo_agua($request['nombre_completo'],$imageURL,$hoja,$folio, $rutaCompleta,'taller');
+            $constancia->save();
+        }else{
+            $imageURL ='talleres/con_taller_'.$request['id_aula'].'.jpg';
+            $constancia = ConstanciasBajoAgua::where('nombre_completo','')->where('taller_id','')->first();
+            if($constancia){
+                $constancia->nombre_completo = $request['nombre_completo'];
+                $constancia->taller_id = $request['id_aula'];
+                Functions::generate_constancia_bajo_agua($request['nombre_completo'],$imageURL,$hoja,$constancia->folio, $rutaCompleta,'taller');
+                $constancia->save();
+
+            }else{
+                $folio = 1260 + ConstanciasBajoAgua::count();
+                $nombre_doc = Functions::generate_constancia_bajo_agua($request['nombre_completo'],$imageURL,$hoja,$folio, $rutaCompleta,'taller');
+                ConstanciasBajoAgua::create([
+                    'folio'=>$folio,
+                    'taller_id'=>intval($request['id_aula']),
+                    'nombre_completo'=>$request['nombre_completo'],
+                    'nombre_doc'=>$nombre_doc,
+                ]);
+            }
+        }
+
+        return response()->json(['message'=>'Se generaron con exito las constancias'],200);
+
+    }
+
 
     public function mergeConstanciasTalleres(Request $request){
         $request->validate([
@@ -176,10 +243,8 @@ class AdminController extends Controller
         $hoja = $folios_hojas[$taller->dia]['hoja'];
         $rutaCompleta ='constancias/talleres/';
         foreach($registros as $item){
-            $inscripcion = InscripcionTaller::where('user_id',$item->user->id
-                )->where('taller_id',$taller->id)->first();
-            $constancia = ConstanciaTaller::where('ins_taller_id',$inscripcion->id)->first();
-            
+
+            $constancia = ConstanciaTaller::where('ins_taller_id',$item->id)->first();
             if($constancia){
                 //caso de correcion de constancia
                 if($constancia->correccion === 1){
@@ -264,7 +329,7 @@ class AdminController extends Controller
                 $constancia = ConstanciaGeneral::where('user_id',$user->id)->first();
                 if($constancia){
                     if($constancia->correccion === 1){
-                        $folio = 1240 + $constancia->id -1;
+                        $folio = 1340 + $constancia->id -1;
                         $imageURL ='CONSTANCIA.jpg';
 
                         Functions::generate_constancia($user,$imageURL,11,$folio,$rutaCompleta,'general');
@@ -272,7 +337,7 @@ class AdminController extends Controller
                         $constancia->save();
                     }
                 }else{
-                    $folio = 1240 + ConstanciaGeneral::count();
+                    $folio = 1340 + ConstanciaGeneral::count();
                     $imageURL ='CONSTANCIA.jpg';
                     $nombre_doc = Functions::generate_constancia($user,$imageURL,11,$folio,$rutaCompleta,'general');
                     ConstanciaGeneral::create([
@@ -327,7 +392,7 @@ class AdminController extends Controller
                             $user['nombre_taller'] = $taller->nombre_taller;
                             $user['nombre_completo'] = $registro->nombres.' '.$registro->apellidos;
                             $user['taller_id'] = $taller->id;
-                            if(InscripcionTaller::where('taller_id',$taller->id)->exists()){
+                            if(InscripcionTaller::where('taller_id',$taller->id)->where('user_id',$registro->id)->exists()){
                                 return response()->json(compact('user'),200);
                             }else{
                                 $error = 'errorInscripcion';

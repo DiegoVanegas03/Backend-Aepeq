@@ -28,29 +28,33 @@ class MailController extends Controller
     }
 
     public function mailRecordatorio(Request $request){
-        $request->validate([
-            'inicio'=>'required',
-            'final'=>'required',
-        ]);
+        try{
+            $request->validate([
+                'inicio'=>'required',
+                'final'=>'required',
+            ]);
 
-        $inicio  = intval($request['inicio']);
-        $final  = intval($request['final']);
-        $count = User::count();
-        $users = User::skip($inicio-1)->take($final-$inicio+1)->get();
+            $inicio  = intval($request['inicio']);
+            $final  = intval($request['final']);
+            $count = User::count();
+            $users = User::skip($inicio-1)->take($final-$inicio+1)->get();
 
-        foreach($users as $user){
-            $congresista = [
-                'qr_image' => 'data:image/png;base64,'.$user->qr_code,
-                'nombre'=>$user->nombres,
-                'apellido'=>$user->apellidos,
-                'numero'=>$user->id,
-            ];
-            $pdf = PDF::loadView('congresista.recordatorio_qr', compact('congresista'));
-            $pdf->setPaper('A4'); 
-            $pdf->setOption('chroot',realpath(''));
-            $user->notify(new RecuerdoQr($pdf));
+            foreach($users as $user){
+                $congresista = [
+                    'qr_image' => 'data:image/png;base64,'.$user->qr_code,
+                    'nombre'=>$user->nombres,
+                    'apellido'=>$user->apellidos,
+                    'numero'=>$user->id,
+                ];
+                $pdf = PDF::loadView('congresista.recordatorio_qr', compact('congresista'));
+                $pdf->setPaper('A4'); 
+                $pdf->setOption('chroot',realpath(''));
+                $user->notify(new RecuerdoQr($pdf));
+            }
+            return response()->json(['message'=>'Recordatorio enviado','total_usuario'=>$count],200);
+        }catch(\Exception $e){
+            return response()->json(['message'=>$e->getMessage(),'descripcion'=>$e->getTraceAsString()],500);
         }
-        return response()->json(['message'=>'Recordatorio enviado','total_usuario'=>$count],200);
     }
 
 

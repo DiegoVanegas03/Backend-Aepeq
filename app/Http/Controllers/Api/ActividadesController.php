@@ -70,6 +70,10 @@ class ActividadesController extends Controller
         return Excel::download(new TrajeTipicoExport(), 'archivo.xlsx');
     }
 
+    public function GenerateConstanciasTrajeTipico(Request $request){
+        
+    }
+
     public function getTrajeTipico(){
         $congresistas = InscripcionTrajeTipico::select(
             'primer_participante',
