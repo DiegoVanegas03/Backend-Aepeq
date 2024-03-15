@@ -76,6 +76,7 @@ Route::get('/admin/mergeConstanciasTalleres',[AdminController::class, 'mergeCons
 Route::get('/admin/recordatorio_congreso',[MailController::class, 'mailRecordatorio']);
 Route::post('/admin/GetInfoConstanciaBajoAgua',[AdminController::class, 'GetInfoConstanciaBajoAgua']);
 Route::post('/admin/generar_constancias_bajo_agua',[AdminController::class, 'ConstanciasBajoElAgua']);
+Route::post('/admin/delete_constancias_bajo_agua',[AdminController::class, 'deleteConBajoAgua']);
 
 
 

@@ -44,7 +44,10 @@ class AdminController extends Controller
             'get_info_constancias_generales',
             'generar_constancias_taller',
             'get_info_constancias_talleres',
-            'mergeConstanciasTalleres'
+            'mergeConstanciasTalleres',
+            'ConstanciasBajoElAgua',
+            'GetInfoConstanciaBajoAgua',
+            'deleteConBajoAgua'
         );
         $this->middleware('checkRole:7')->only(
             'total_users_info',
@@ -57,7 +60,10 @@ class AdminController extends Controller
             'get_info_constancias_generales',
             'generar_constancias_taller',
             'get_info_constancias_talleres',
-            'mergeConstanciasTalleres'
+            'mergeConstanciasTalleres',
+            'ConstanciasBajoElAgua',
+            'GetInfoConstanciaBajoAgua',
+            'deleteConBajoAgua'
         );
         $this->middleware('checkRole:2,3,4,5,6,7')->only(
             'infoAsistenciaGeneral',
@@ -71,11 +77,11 @@ class AdminController extends Controller
 
     public function deleteConBajoAgua(Request $request){
         $request->validate([
-            'folio' =>'required'
+            'id' =>'required'
         ]);
-        $constancia = ConstanciasBajoAgua::where('folio',$request['folio'])->first();
+        $constancia = ConstanciasBajoAgua::find($request['id']);
         $constancia->taller_id = null;
-        $constancia->nombre_completo = null;
+        $constancia->nombre_completo = '';
         $constancia->save();
         return response()->json(['message'=>'Se elimino correctamente'],200);
     }
@@ -103,15 +109,14 @@ class AdminController extends Controller
         $hoja = 11;
         $rutaCompleta ='constancias/talleres_bajo_agua/';
         if($request['correccion'] === 1){
-            $folio =  $request['folio'];
-            $constancia = ConstanciasBajoAgua::where('folio',$folio)->first();
+            $constancia = ConstanciasBajoAgua::find($request['id_con']);
             $constancia->nombre_completo = $request['nombre_completo'];
             $imageURL ='talleres/con_taller_'.$constancia->taller_id.'.jpg';
-            Functions::generate_constancia_bajo_agua($request['nombre_completo'],$imageURL,$hoja,$folio, $rutaCompleta,'taller');
+            Functions::generate_constancia_bajo_agua($request['nombre_completo'],$imageURL,$hoja,$constancia->folio, $rutaCompleta,'taller');
             $constancia->save();
         }else{
             $imageURL ='talleres/con_taller_'.$request['id_aula'].'.jpg';
-            $constancia = ConstanciasBajoAgua::where('nombre_completo','')->where('taller_id','')->first();
+            $constancia = ConstanciasBajoAgua::where('nombre_completo','')->where('taller_id',null)->first();
             if($constancia){
                 $constancia->nombre_completo = $request['nombre_completo'];
                 $constancia->taller_id = $request['id_aula'];
@@ -120,13 +125,15 @@ class AdminController extends Controller
 
             }else{
                 $folio = 1260 + ConstanciasBajoAgua::count();
-                $nombre_doc = Functions::generate_constancia_bajo_agua($request['nombre_completo'],$imageURL,$hoja,$folio, $rutaCompleta,'taller');
-                ConstanciasBajoAgua::create([
+                $constancia = ConstanciasBajoAgua::create([
                     'folio'=>$folio,
                     'taller_id'=>intval($request['id_aula']),
                     'nombre_completo'=>$request['nombre_completo'],
-                    'nombre_doc'=>$nombre_doc,
+                    'nombre_doc' =>'',
                 ]);
+                $nombre_doc = Functions::generate_constancia_bajo_agua($request['nombre_completo'],$imageURL,$hoja,$folio, $rutaCompleta,'taller');
+                $constancia['nombre_doc']=$nombre_doc;
+                $constancia->save();
             }
         }
 
@@ -140,13 +147,19 @@ class AdminController extends Controller
             'arrayDocuments' => 'required',
         ]);
         $documents = json_decode( $request['arrayDocuments']);
-        $rutaCompleta = '/constancias/talleres/';
+        if($request['bajo_agua']=== 1){
+            $rutaCompleta ='/constancias/talleres_bajo_agua/';
+        }else{
+            $rutaCompleta = '/constancias/talleres/';
+        }
         $pdf = PDFMerger::init();
         foreach($documents as $item){
             if($item){
                 try{
-                    $content = Functions::getFile($rutaCompleta.$item);
-                    $pdf->addString($content, 'all');
+                    if($item !== ''){
+                        $content = Functions::getFile($rutaCompleta.$item);
+                        $pdf->addString($content, 'all');
+                    }
                 }catch(\Exception $e){
                     return response()->json([
                         'error' => 'Error al obtener el objeto desde S3',
