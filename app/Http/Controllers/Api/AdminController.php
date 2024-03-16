@@ -342,7 +342,7 @@ class AdminController extends Controller
                 $constancia = ConstanciaGeneral::where('user_id',$user->id)->first();
                 if($constancia){
                     if($constancia->correccion === 1){
-                        $folio = 1340 + $constancia->id -1;
+                        $folio = 1600 + $constancia->id -1;
                         $imageURL ='CONSTANCIA.jpg';
 
                         Functions::generate_constancia($user,$imageURL,11,$folio,$rutaCompleta,'general');
@@ -350,7 +350,7 @@ class AdminController extends Controller
                         $constancia->save();
                     }
                 }else{
-                    $folio = 1340 + ConstanciaGeneral::count();
+                    $folio = 1600 + ConstanciaGeneral::count();
                     $imageURL ='CONSTANCIA.jpg';
                     $nombre_doc = Functions::generate_constancia($user,$imageURL,11,$folio,$rutaCompleta,'general');
                     ConstanciaGeneral::create([
