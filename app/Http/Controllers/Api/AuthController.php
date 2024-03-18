@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Hash;
 use App\Http\Controllers\Functions;
 use App\Events\UserLoggedOut;
 use App\Events\UpdateRegistersAdmin;
+use App\Models\AsistenciaGeneral;
 use App\Notifications\EmailRegister;
 use App\Models\ConstanciaGeneral;
 use App\Models\Evaluacion;
@@ -41,7 +42,7 @@ class AuthController extends Controller
             'mejoras'=>$response_open_q[2],
         ]);
         $constancia = ConstanciaGeneral::where('user_id',$user->id)->first();
-        $rutaCompleta = '/constancias/general'.$constancia['nombre_doc'];
+        $rutaCompleta = '/constancias/general/'.$constancia['nombre_doc'];
         $url = Functions::searchLinksS3($rutaCompleta);
         return response()->json(compact('url'),200);
     }
@@ -50,7 +51,7 @@ class AuthController extends Controller
     public function get_constancia(Request $request){
         $user = $request->user();
         $constancia = ConstanciaGeneral::where('user_id',$user->id)->first();
-        $rutaCompleta = '/constancias/general'.$constancia['nombre_doc'];
+        $rutaCompleta = '/constancias/general/'.$constancia['nombre_doc'];
         $url = Functions::searchLinksS3($rutaCompleta);
         return response()->json(compact('url'),200);
     }
@@ -101,6 +102,17 @@ class AuthController extends Controller
             // Convertir la fecha de expiración a milisegundos
             $expirationInMilliseconds = $expiration->getTimestamp() * 1000;
             $fechaActual = new DateTime('now');
+
+            if(AsistenciaGeneral::where('user_id',$user->id)->count() > 0){
+                if(Evaluacion::where('user_id',$user->id)->exists()){
+                    $evaluacion = 2;
+                }else{
+                    $evaluacion = 1;
+                }
+            }else{
+                $evaluacion = 0;
+            }
+
             $userData = [
                 'NumeroCongresista' => $user->id,
                 'Nombre' => $user->nombres,
@@ -109,7 +121,7 @@ class AuthController extends Controller
                 'time_exp'=> $expirationInMilliseconds,
                 'email_verified' => $user->hasVerifiedEmail(),
                 'fechaActual'=>$fechaActual->format('Y-m-d'),
-                'evaluacion'=>Evaluacion::where('user_id',$user->id)->exists(),
+                'evaluacion'=>$evaluacion,
             ];
             return response()->json(['user' => $userData], 200);
         }
@@ -136,6 +148,17 @@ class AuthController extends Controller
         $tokenExpiration = $tokenResult->accessToken->expires_at;
         $expirationInMilliseconds = $tokenExpiration->getTimestamp() * 1000;
         $fechaActual = new DateTime('now');
+
+        if(AsistenciaGeneral::where('user_id',$user->id)->count() > 0){
+            if(Evaluacion::where('user_id',$user->id)->exists()){
+                $evaluacion = 2;
+            }else{
+                $evaluacion = 1;
+            }
+        }else{
+            $evaluacion = 0;
+        }
+
         $userData = [
             'NumeroCongresista' => $user->id,
             'Nombre' => $user->nombres,
@@ -144,7 +167,7 @@ class AuthController extends Controller
             'time_exp'=> $expirationInMilliseconds,
             'email_verified' => $user->hasVerifiedEmail(),
             'fechaActual'=>$fechaActual->format('Y-m-d'),
-            'evaluacion'=>Evaluacion::where('user_id',$user->id)->exists(),
+            'evaluacion'=>$evaluacion,
         ];
         return response()->json(['token' => $token, 'user' => $userData], 200);
     }
